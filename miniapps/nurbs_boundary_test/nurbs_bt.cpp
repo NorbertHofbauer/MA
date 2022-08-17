@@ -37,6 +37,7 @@
 using namespace std;
 using namespace mfem;
 
+double lambda(const Vector &x);
 
 /** Class for integrating the bilinear form a(u,v) := (Q Laplace u, v) where Q
     can be a scalar coefficient. */
@@ -129,7 +130,7 @@ int main(int argc, char *argv[])
    // 1. Parse command-line options.
    const char *mesh_file = "../../data/star.mesh";
    const char *per_file  = "none";
-   int ref_levels = -1;
+   int ref_levels = 0;
    Array<int> master(0);
    Array<int> slave(0);
    bool static_cond = false;
@@ -296,11 +297,15 @@ int main(int argc, char *argv[])
    Array<int> dbc_bdr(mesh->bdr_attributes.Max());
    Array<int> nbc1_bdr(mesh->bdr_attributes.Max());
    Array<int> nbc2_bdr(mesh->bdr_attributes.Max());
+   Array<int> rbc_bdr(mesh->bdr_attributes.Max());
 
    // we assume that the boundary attribute 1,2 are dirchlet and 3,4 are neumann
    dbc_bdr = 0; dbc_bdr[0] = 1; dbc_bdr[1] = 1;  //dirichlet
+   //dbc_bdr = 0; dbc_bdr[1] = 1;  //dirichlet
    nbc1_bdr = 0; nbc1_bdr[2] = 1;  //neumann1
    nbc2_bdr = 0; nbc2_bdr[3] = 1;  //neumann2
+   // we will lay a robin bc on top of the dirchlet...totally nonsense ^^
+   rbc_bdr = 0; rbc_bdr[0] = 1; //robin
 
    // For a continuous basis the linear system must be modified to enforce an
    // essential (Dirichlet) boundary condition.
@@ -313,14 +318,28 @@ int main(int argc, char *argv[])
 
    // values should be defined at top of class main, but for now it doesn't really matter
    double mat_val = 1.0;
-   double dbc1_val = -10.0;
-   double dbc2_val = 10.0;
+   double dbc1_val = -999.0;
+   double dbc2_val = 111.0;
    double nbc1_val = 0;
    double nbc2_val = 0;
+   double rbc_a_val = 0;
+   double rbc_b_val = 0;
 
    ConstantCoefficient matCoef(mat_val);
    ConstantCoefficient nbc1Coef(nbc1_val);
    ConstantCoefficient nbc2Coef(nbc2_val);
+   ConstantCoefficient rbcACoef(rbc_a_val);
+   ConstantCoefficient rbcBCoef(rbc_b_val);
+
+
+   // okay lets try lambda functions
+
+   //auto lambda = [] (auto first)
+   //{
+   //   return first;
+   //};
+   
+   FunctionCoefficient lambdaCoef(lambda);
 
    // Since the n.Grad(u) terms arise by integrating -Div(m Grad(u)) by parts we
    // must introduce the coefficient 'm' into the boundary conditions.
@@ -328,6 +347,8 @@ int main(int argc, char *argv[])
    // = m g rather than simply n.Grad(u) = g.
    ProductCoefficient m_nbc1Coef(matCoef, nbc1Coef);
    ProductCoefficient m_nbc2Coef(matCoef, nbc2Coef);
+   ProductCoefficient m_rbcACoef(matCoef, rbcACoef);
+   ProductCoefficient m_rbcBCoef(matCoef, rbcBCoef);
 
    // construct array for Coefficients to combine the boundary values
    // dirichlet
@@ -337,7 +358,8 @@ int main(int argc, char *argv[])
    vec_dbc(0) = dbc1_val;
    vec_dbc(1) = dbc2_val;
    vac_dbc.Set(0,new PWConstCoefficient(vec_dbc));
-
+   
+   //cout << " vac_dbc = " << vac_dbc.GetCoeff(0) << endl;
 
    // 7. Define the solution vector x as a finite element grid function
    //    corresponding to fespace. Initialize x with initial guess of zero,
@@ -358,10 +380,16 @@ int main(int argc, char *argv[])
 
    // Set the Dirichlet values in the solution vector
    x.ProjectBdrCoefficient(vac_dbc, dbc_bdr);
+   x.ProjectBdrCoefficient(lambdaCoef, rbc_bdr);
+   cout << " x = " << x << endl;
 
    // Add the desired value for n.Grad(u) on the Neumann boundary
    b->AddBoundaryIntegrator(new BoundaryLFIntegrator(m_nbc1Coef), nbc1_bdr);
-   b->AddBoundaryIntegrator(new BoundaryLFIntegrator(m_nbc2Coef), nbc2_bdr);
+   //b->AddBoundaryIntegrator(new BoundaryLFIntegrator(m_nbc2Coef), nbc2_bdr);
+   b->AddBoundaryIntegrator(new BoundaryLFIntegrator(lambdaCoef), nbc2_bdr);
+
+   // robin
+   b->AddBoundaryIntegrator(new BoundaryLFIntegrator(m_rbcBCoef), rbc_bdr);
 
 
    b->Assemble();
@@ -375,6 +403,9 @@ int main(int argc, char *argv[])
    cout << "using DiffusionIntegrator."<< endl;
    //a->AddDomainIntegrator(new DiffusionIntegrator(one));
    a->AddDomainIntegrator(new DiffusionIntegrator(matCoef));
+
+   // Add a Mass Integrator on the Robin Boundary
+   a->AddDomainIntegrator(new MassIntegrator(m_rbcACoef),rbc_bdr);
 
    // 9. Assemble the bilinear form and the corresponding linear system,
    //    applying any necessary transformations such as: eliminating boundary
@@ -437,4 +468,13 @@ int main(int argc, char *argv[])
    delete mesh;
 
    return 0;
+}
+
+
+double lambda(const Vector &x)
+{  
+   //double n = (x(0)*x(0)+x(1)*x(1)+x(2)*x(2))/100;
+   double n = x(0);
+   cout << " x(0) = " << x(0) << " x(1) = " << x(1) << " x(2) = " << x(2) << endl;
+   return n;
 }
