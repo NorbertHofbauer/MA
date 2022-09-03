@@ -34,7 +34,7 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace std;
+using namespace std; // bad idea!!!!
 using namespace mfem;
 
 double lambda(const Vector &x);
@@ -334,10 +334,11 @@ int main(int argc, char *argv[])
 
    // okay lets try lambda functions
 
-   //auto lambda = [] (auto first)
-   //{
-   //   return first;
-   //};
+   auto lambda = [] (const Vector &first)->double
+   {
+      cout << " x(0) = " << first(0) << " x(1) = " << first(1) << " x(2) = " << first(2) << endl;
+      return first(0);
+   };
    
    FunctionCoefficient lambdaCoef(lambda);
 
@@ -381,7 +382,7 @@ int main(int argc, char *argv[])
    // Set the Dirichlet values in the solution vector
    x.ProjectBdrCoefficient(vac_dbc, dbc_bdr);
    x.ProjectBdrCoefficient(lambdaCoef, rbc_bdr);
-   cout << " x = " << x << endl;
+   //cout << " x = " << x << endl;
 
    // Add the desired value for n.Grad(u) on the Neumann boundary
    b->AddBoundaryIntegrator(new BoundaryLFIntegrator(m_nbc1Coef), nbc1_bdr);
@@ -471,10 +472,10 @@ int main(int argc, char *argv[])
 }
 
 
-double lambda(const Vector &x)
-{  
+//double lambda(const Vector &x)
+//{  
    //double n = (x(0)*x(0)+x(1)*x(1)+x(2)*x(2))/100;
-   double n = x(0);
-   cout << " x(0) = " << x(0) << " x(1) = " << x(1) << " x(2) = " << x(2) << endl;
-   return n;
-}
+//   double n = x(0);
+//   cout << " x(0) = " << x(0) << " x(1) = " << x(1) << " x(2) = " << x(2) << endl;
+//   return n;
+//}
