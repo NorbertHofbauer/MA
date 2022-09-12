@@ -24,7 +24,7 @@ using namespace mfem;
 int main(int argc, char *argv[])
 {
    // 0. Setup
-   double vdbc_val1 = 1e3;
+   double vdbc_val1 = 5e3;
    //double vdbc_val2 = 22;
    double pdbc_val1 = 1e5;
    //double pdbc_val2 = 22;
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
    int ref_levels = 1;
    bool visualization = 1;
    Array<int> order(1);
-   order[0] = 3;
+   order[0] = 2;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -204,14 +204,14 @@ int main(int argc, char *argv[])
       
    */
 
-   // Setup bilinear and linear forms
 
-   // Momentum equation
-   // diffusion term
-   BilinearForm a(vfes);
-   a.AddDomainIntegrator(new VectorDiffusionIntegrator(dim));
-   a.Assemble();
-   a.Finalize();
+   // initial guess set to be exact solution
+   GridFunction v, p;
+   v.MakeRef(vfes, x.GetBlock(0), 0);
+   p.MakeRef(pfes, x.GetBlock(1), 0);
+   
+
+   // Setup bilinear and linear forms
 
    // rhs of momentum equation
    // LinearForm f(vfes);  
@@ -223,6 +223,20 @@ int main(int argc, char *argv[])
    f->Update(vfes, rhs.GetBlock(0),0);   
    f->AddDomainIntegrator(new VectorDomainLFIntegrator(vcczero));
    f->Assemble();
+   
+   // rhs for continuity equation
+   ConstantCoefficient zero(0.0);
+   LinearForm *g(new LinearForm);
+   g->Update(pfes, rhs.GetBlock(1), 0);
+   g->AddDomainIntegrator(new DomainLFIntegrator(zero));
+   g->Assemble();
+   
+   // Momentum equation
+   // diffusion term
+   BilinearForm a(vfes);
+   a.AddDomainIntegrator(new VectorDiffusionIntegrator(dim));
+   a.Assemble();
+   a.Finalize();
 
    // grad pressure term
    MixedBilinearForm b(pfes,vfes); // (trial,test)
@@ -231,12 +245,10 @@ int main(int argc, char *argv[])
    b.Assemble();
    b.Finalize();
 
-   // rhs for continuity equation
-   ConstantCoefficient zero(0.0);
-   LinearForm *g(new LinearForm);
-   g->Update(pfes, rhs.GetBlock(1), 0);
-   g->AddDomainIntegrator(new DomainLFIntegrator(zero));
-   g->Assemble();
+   SparseMatrix A,B;
+   a.FormSystemMatrix(vel_ess_tdof_list, A);
+   b.FormRectangularSystemMatrix(vel_ess_tdof_list, pres_ess_tdof_list, B);
+
 
    // Setup stokes operator
    /*
@@ -248,15 +260,16 @@ int main(int argc, char *argv[])
 
    BlockOperator stokesOp(block_offsets);
 
-   SparseMatrix &A(a.SpMat());
-   SparseMatrix &B(b.SpMat());
+   //SparseMatrix &A(a.SpMat());
+   //SparseMatrix &B(b.SpMat());
    B.EnsureMultTranspose();
    TransposeOperator Bt(&B);
+
 
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&Bt);
-
+   
    // 8. Define the solution vectors v,p as a finite element grid function
    //    corresponding to the fespaces. Initialize v,p with initial guess of zero,
    //    which satisfies the boundary conditions.
@@ -265,11 +278,6 @@ int main(int argc, char *argv[])
    ///GridFunction p(pfes);
    //p = 0.0;
 
-   // initial guess set to be exact solution
-   GridFunction v, p;
-   v.MakeRef(vfes, x.GetBlock(0), 0);
-   p.MakeRef(pfes, x.GetBlock(1), 0);
-   
    // boundary conditions have to be set!
    //v.ProjectCoefficient(velocity);
    // Set the Dirichlet values in the solution vector
@@ -281,9 +289,9 @@ int main(int argc, char *argv[])
 
    // 9. SOLVER
    // setup MINRES solver
-   int maxIter(100);
-   double rtol(1.e-6);
-   double atol(1.e-6);
+   int maxIter(30000);
+   double rtol(1.e-10);
+   double atol(1.e-10);
 
    StopWatch chrono;
    chrono.Clear();
