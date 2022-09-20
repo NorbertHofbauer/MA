@@ -51,10 +51,10 @@ int main(int argc, char *argv[])
    //const char *mesh_file = "../../../MA/mesh/pipe-nurbs-boundary-test_2.mesh";
    const char *mesh_file = "../../../MA/mesh/quad_nurbs.mesh";
 
-   int ref_levels = 0;
+   int ref_levels = 2;
    bool visualization = 1;
    Array<int> order(1);
-   order[0] = 3;
+   order[0] = 0;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -244,7 +244,7 @@ int main(int argc, char *argv[])
 
    auto lambda_up = [&sdim](const Vector &ControlPointIn, Vector &ControlPointOut) -> void
    {
-      ControlPointOut[0] = 0;
+      ControlPointOut[0] = 777777;
       ControlPointOut[1] = 999999;
       
       std::cout << " v(0) = " << ControlPointIn(0) << " v(1) = " << ControlPointIn(1) << std::endl;
@@ -287,13 +287,15 @@ int main(int argc, char *argv[])
       std::cout << x(i) << std::endl;
    }
 
-   std::cout << "sizeof(vel_ess_tdof_list) " << sizeof(vel_ess_tdof_list) << std::endl;
-   for (int i = 0; i < sizeof(vel_ess_tdof_list); i++) {
+   int getArrayLength = sizeof(vel_ess_tdof_list) / sizeof(int);
+   std::cout << "sizeof(vel_ess_tdof_list) " << getArrayLength << std::endl;
+   for (int i = 0; i < getArrayLength; i++) {
       std::cout << vel_ess_tdof_list[i] << std::endl;
    }
 
-   std::cout << "sizeof(pres_ess_tdof_list) " << sizeof(pres_ess_tdof_list) << std::endl;
-   for (int i = 0; i < sizeof(pres_ess_tdof_list); i++) {
+   getArrayLength = sizeof(pres_ess_tdof_list) / sizeof(int);
+   std::cout << "sizeof(pres_ess_tdof_list) " << getArrayLength << std::endl;
+   for (int i = 0; i < getArrayLength; i++) {
       std::cout << pres_ess_tdof_list[i] << std::endl;
    }
 
@@ -363,6 +365,20 @@ int main(int argc, char *argv[])
       p_sock.precision(8);
       p_sock << "solution\n" << mesh << p << "window_title 'Pressure'" << std::endl;
    }
+
+
+   // 15. Free the used memory.
+   /*delete a;
+   delete A;
+   delete b;
+   delete B;
+   delete vfes;
+   delete pfes;
+   delete mesh;
+   delete pres_ess_tdof_list;
+   delete vel_ess_tdof_list;*/
+   vel_ess_tdof_list = 0;
+   pres_ess_tdof_list = 0;
 
    return 0;
 }
