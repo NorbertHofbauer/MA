@@ -51,10 +51,10 @@ int main(int argc, char *argv[])
    //const char *mesh_file = "../../../MA/mesh/pipe-nurbs-boundary-test_2.mesh";
    const char *mesh_file = "../../../MA/mesh/quad_nurbs.mesh";
 
-   int ref_levels = 2;
+   int ref_levels = 0;
    bool visualization = 1;
    Array<int> order(1);
-   order[0] = 0;
+   order[0] = 3;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -107,8 +107,8 @@ int main(int argc, char *argv[])
    // we need an NURBSFECollection for every different component in our PDE, e.g.: velocity, pressure, ...
    FiniteElementCollection *vfec; // velocity
    FiniteElementCollection *pfec; // pressure
-   vfec = new NURBSFECollection(order[0]+1);
-   pfec = new NURBSFECollection(order[0]);
+   vfec = new NURBSFECollection(order[0]);
+   pfec = new NURBSFECollection(order[0]-1);
    std::cout << "velocity fec Order " << vfec->GetOrder() << std::endl;
    std::cout << "pressure fec Order " << pfec->GetOrder() << std::endl;
 
@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
    }
 
    if (order.Size() != nkv ) { mfem_error("Wrong number of orders set."); }
-   vNURBSext = new NURBSExtension(mesh->NURBSext, order[0]+1);
-   pNURBSext = new NURBSExtension(mesh->NURBSext, order[0]);
+   vNURBSext = new NURBSExtension(mesh->NURBSext, order[0]);
+   pNURBSext = new NURBSExtension(mesh->NURBSext, order[0]-1);
 
    FiniteElementSpace *vfes = new FiniteElementSpace(mesh, vNURBSext, vfec, sdim);
    FiniteElementSpace *pfes = new FiniteElementSpace(mesh, pNURBSext, pfec);
@@ -178,6 +178,9 @@ int main(int argc, char *argv[])
       
    */
 
+   x = 0.0;
+   rhs = 0.0;
+
    // initial guess set to be exact solution
    GridFunction v, p;
    v.MakeRef(vfes, x.GetBlock(0), 0);
@@ -213,7 +216,7 @@ int main(int argc, char *argv[])
    // grad pressure term
    MixedBilinearForm b(pfes,vfes); // (trial,test)
    ConstantCoefficient minusOne(-1.0);
-   b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne)));
+   b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne))); 
    b.Assemble();
    b.Finalize();
 
@@ -236,6 +239,9 @@ int main(int argc, char *argv[])
    B.EnsureMultTranspose();
    TransposeOperator Bt(&B);
 
+   A.PrintInfo(std::cout);
+   B.PrintInfo(std::cout);
+
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&Bt);
@@ -252,22 +258,9 @@ int main(int argc, char *argv[])
       return;
    };
 
-   //VectorFunctionCoefficient vfc_up(sdim, lambda_up);
-
-   //Array<int> pwattr(1);
-   //pwattr[1] = 1;
-   //Array<VectorCoefficient> pwvcar(1);
-   //pwvcar[0] = vfc_up;
-
-   //PWVectorCoefficient pwvc(sdim,pwattr,pwvcar);
-
-   //std::cout << " jkl = " << jkl << std::endl;
-
    VectorFunctionCoefficient vfc_up(sdim, lambda_up);
    v.ProjectBdrCoefficient(vfc_up,vdbc_bdr);
-   //v.ProjectCoefficient(pwvc);
    std::cout << " v = " << v << std::endl;
-
 
    //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
    //v.ProjectCoefficient(vdbcCoef, vdbc_bdr);
@@ -287,33 +280,59 @@ int main(int argc, char *argv[])
       std::cout << x(i) << std::endl;
    }
 
-   int getArrayLength = sizeof(vel_ess_tdof_list) / sizeof(int);
+   int getArrayLength = vel_ess_tdof_list.Size();
    std::cout << "sizeof(vel_ess_tdof_list) " << getArrayLength << std::endl;
    for (int i = 0; i < getArrayLength; i++) {
       std::cout << vel_ess_tdof_list[i] << std::endl;
    }
 
-   getArrayLength = sizeof(pres_ess_tdof_list) / sizeof(int);
+   getArrayLength = pres_ess_tdof_list.Size();
    std::cout << "sizeof(pres_ess_tdof_list) " << getArrayLength << std::endl;
    for (int i = 0; i < getArrayLength; i++) {
       std::cout << pres_ess_tdof_list[i] << std::endl;
    }
 
+
+   
    // 9. SOLVER
    // setup MINRES solver
-   int maxIter(300);
+   int maxIter(10);
    double rtol(1.e-10);
    double atol(1.e-10);
 
    StopWatch chrono;
    chrono.Clear();
    chrono.Start();
+   
+   
+   Solver *J_solver;
+   Solver *J_prec;
+   J_prec = new DSmoother(1);
+   MINRESSolver *J_minres = new MINRESSolver;
+   J_minres->SetRelTol(rtol);
+   J_minres->SetAbsTol(0.0);
+   J_minres->SetMaxIter(300);
+   J_minres->SetPrintLevel(-1);
+   J_minres->SetPreconditioner(*J_prec);
+   J_solver = J_minres;
+   
+   NewtonSolver solver;
+   solver.SetSolver(*J_solver);
+   solver.SetAbsTol(atol);
+   solver.SetRelTol(rtol);
+   solver.SetMaxIter(maxIter);
+   solver.SetOperator(stokesOp);
+   solver.SetPrintLevel(1);
+   
+
+   /*
    MINRESSolver solver;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
    solver.SetPrintLevel(1);
+   */
 
 
    // solve the system
