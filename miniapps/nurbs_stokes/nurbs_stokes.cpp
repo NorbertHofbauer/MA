@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
       
    */
 
-   x = 0.0;
+   x = 1.0;
    rhs = 0.0;
 
    // initial guess set to be exact solution
@@ -211,14 +211,14 @@ int main(int argc, char *argv[])
    BilinearForm a(vfes);
    a.AddDomainIntegrator(new VectorDiffusionIntegrator(sdim));
    a.Assemble();
-   a.Finalize();
+   //a.Finalize();
 
    // grad pressure term
    MixedBilinearForm b(pfes,vfes); // (trial,test)
    ConstantCoefficient minusOne(-1.0);
    b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne))); 
    b.Assemble();
-   b.Finalize();
+   //b.Finalize();
 
    SparseMatrix A,B;
    a.FormSystemMatrix(vel_ess_tdof_list, A);
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&Bt);
-   
+
    std::cout << " v = " << v << std::endl;
 
    auto lambda_up = [&sdim](const Vector &ControlPointIn, Vector &ControlPointOut) -> void
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
    
    // 9. SOLVER
    // setup MINRES solver
-   int maxIter(10);
+   int maxIter(1);
    double rtol(1.e-10);
    double atol(1.e-10);
 
@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
    chrono.Clear();
    chrono.Start();
    
-   
+   /*
    Solver *J_solver;
    Solver *J_prec;
    J_prec = new DSmoother(1);
@@ -323,17 +323,16 @@ int main(int argc, char *argv[])
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
    solver.SetPrintLevel(1);
-   
+   */
 
-   /*
+   
    MINRESSolver solver;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
    solver.SetPrintLevel(1);
-   */
-
+   
 
    // solve the system
    solver.Mult(rhs, x);
@@ -399,5 +398,12 @@ int main(int argc, char *argv[])
    vel_ess_tdof_list = 0;
    pres_ess_tdof_list = 0;
 
+
+   
+   A.PrintInfo(std::cout);
+   A.PrintMatlab(std::cout);
+   B.PrintInfo(std::cout);
+   B.PrintMatlab(std::cout);
+   
    return 0;
 }

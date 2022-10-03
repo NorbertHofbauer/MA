@@ -128,7 +128,8 @@ public:
 int main(int argc, char *argv[])
 {
    // 1. Parse command-line options.
-   const char *mesh_file = "../../data/star.mesh";
+   //const char *mesh_file = "../../data/star.mesh";
+   const char *mesh_file = "../../../MA/mesh/pipe-nurbs-boundary-test_2.mesh";
    const char *per_file  = "none";
    int ref_levels = 0;
    Array<int> master(0);

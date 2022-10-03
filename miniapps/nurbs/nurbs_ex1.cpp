@@ -124,7 +124,9 @@ public:
 int main(int argc, char *argv[])
 {
    // 1. Parse command-line options.
-   const char *mesh_file = "../../data/star.mesh";
+   //const char *mesh_file = "../../data/star.mesh";
+   const char *mesh_file = "../../data/square-nurbs.mesh";
+
    const char *per_file  = "none";
    int ref_levels = -1;
    Array<int> master(0);
@@ -136,6 +138,7 @@ int main(int argc, char *argv[])
    double kappa = -1;
    Array<int> order(1);
    order[0] = 1;
+   order[0] = 2;
 
    OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
@@ -363,7 +366,7 @@ int main(int argc, char *argv[])
    SparseMatrix A;
    Vector B, X;
    a->FormLinearSystem(ess_tdof_list, x, *b, A, X, B);
-
+   A.PrintInfo(std::cout);
    cout << "Size of linear system: " << A.Height() << endl;
 
 #ifndef MFEM_USE_SUITESPARSE
