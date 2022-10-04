@@ -125,10 +125,11 @@ int main(int argc, char *argv[])
 {
    // 1. Parse command-line options.
    //const char *mesh_file = "../../data/star.mesh";
-   const char *mesh_file = "../../data/square-nurbs.mesh";
+   //const char *mesh_file = "../../data/square-nurbs.mesh";
+   const char *mesh_file = "../../data/pipe-nurbs-2d.mesh";
 
    const char *per_file  = "none";
-   int ref_levels = -1;
+   int ref_levels = 0;
    Array<int> master(0);
    Array<int> slave(0);
    bool static_cond = false;
@@ -367,6 +368,8 @@ int main(int argc, char *argv[])
    Vector B, X;
    a->FormLinearSystem(ess_tdof_list, x, *b, A, X, B);
    A.PrintInfo(std::cout);
+   A.PrintMatlab(std::cout);
+   
    cout << "Size of linear system: " << A.Height() << endl;
 
 #ifndef MFEM_USE_SUITESPARSE

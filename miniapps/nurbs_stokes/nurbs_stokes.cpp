@@ -26,10 +26,10 @@ void vec_up(const Vector &, Vector &);
 int main(int argc, char *argv[])
 {
    // 0. Setup
-   double vdbc_val_0_0 = 0;
-   double vdbc_val_0_1 = 0;
-   double vdbc_val_2_0 = 0;
-   double vdbc_val_2_1 = 5;
+   //double vdbc_val_0_0 = 0;
+   //double vdbc_val_0_1 = 0;
+   //double vdbc_val_2_0 = 0;
+   //double vdbc_val_2_1 = 5;
    double pdbc_val = 55;
    //double pdbc_val2 = 22;
    //double vnbc_val = 0;
@@ -141,6 +141,8 @@ int main(int argc, char *argv[])
    
    // Dirichlet
    Array<int> vdbc_bdr(mesh->bdr_attributes.Max());
+   Array<int> vdbc_bdr_up(mesh->bdr_attributes.Max());
+   Array<int> vdbc_bdr_down(mesh->bdr_attributes.Max());
    Array<int> pdbc_bdr(mesh->bdr_attributes.Max());
    std::cout << " bdr attributes " << mesh->bdr_attributes.Max() << std::endl;
    // Neumann
@@ -149,8 +151,11 @@ int main(int argc, char *argv[])
    
    // we assume that the boundary attribute 1,2 are dirchlet, we want to use either pressure or velocity or a mix
    //vdbc_bdr = 0; vdbc_bdr[0] = 1; vdbc_bdr[2] = 1;
-   vdbc_bdr = 0; vdbc_bdr[2] = 1; 
-   pdbc_bdr = 0; pdbc_bdr[1] = 1;
+   vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; 
+   vdbc_bdr_up = 0; vdbc_bdr_up[2] = 1; 
+   vdbc_bdr_down = 0; vdbc_bdr_down[0] = 1; 
+   
+   pdbc_bdr = 0; pdbc_bdr[1] = 0;
 
    Array<int> vel_ess_tdof_list;
    Array<int> pres_ess_tdof_list;
@@ -178,7 +183,7 @@ int main(int argc, char *argv[])
       
    */
 
-   x = 1.0;
+   x = 0.0;
    rhs = 0.0;
 
    // initial guess set to be exact solution
@@ -220,10 +225,53 @@ int main(int argc, char *argv[])
    b.Assemble();
    //b.Finalize();
 
+
+   //std::cout << " v = " << v << std::endl;
+
+   auto lambda_up = [&sdim](const Vector &ControlPointIn, Vector &ControlPointOut) -> void
+   {
+      ControlPointOut[0] = 10;
+      ControlPointOut[1] = 0;
+      
+      std::cout << " v(0) = " << ControlPointIn(0) << " v(1) = " << ControlPointIn(1) << std::endl;
+      std::cout << " x(0) = " << ControlPointOut(0) << " x(1) = " << ControlPointOut(1) << std::endl;      
+      return;
+   };
+
+   auto lambda_down = [&sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
+   {
+      ControlPointOut[0] = 0;
+      ControlPointOut[1] = 0;
+      
+      std::cout << " v(0) = " << ControlPointIn(0) << " v(1) = " << ControlPointIn(1) << std::endl;
+      std::cout << " x(0) = " << ControlPointOut(0) << " x(1) = " << ControlPointOut(1) << std::endl;      
+      return;
+   };
+
+   VectorFunctionCoefficient vfc_up(sdim, lambda_up);
+   VectorFunctionCoefficient vfc_down(sdim, lambda_down);
+   v.ProjectBdrCoefficient(vfc_up,vdbc_bdr_up);
+   v.ProjectBdrCoefficient(vfc_down,vdbc_bdr_down);
+   std::cout << " v = " << v << std::endl;
+
+   //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
+   //v.ProjectCoefficient(vdbcCoef, vdbc_bdr);
+   //std::cout << " p = " << p << std::endl;
+   ConstantCoefficient pdbcCoef(pdbc_val);
+   p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
+   std::cout << " p = " << p << std::endl;
+
    SparseMatrix A,B;
-   a.FormSystemMatrix(vel_ess_tdof_list, A);
-   b.FormRectangularSystemMatrix(pres_ess_tdof_list, vel_ess_tdof_list, B);
-   
+   Vector V, F;
+   Vector P, G;
+   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO);
+   //a.EliminateVDofs(vel_ess_tdof_list, diag);
+   //a.Finalize();
+   //a.FormSystemMatrix(vel_ess_tdof_list, A);
+   //b.FormRectangularSystemMatrix(pres_ess_tdof_list, vel_ess_tdof_list, B);
+   a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F);
+   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, F);
+
    // Setup stokes operator
    /*
       S = [ A    B ] [ u ] = [ f ]
@@ -239,37 +287,16 @@ int main(int argc, char *argv[])
    B.EnsureMultTranspose();
    TransposeOperator Bt(&B);
 
-   A.PrintInfo(std::cout);
-   B.PrintInfo(std::cout);
+   //A.PrintInfo(std::cout);
+   //A.PrintMatlab(std::cout);
+   //B.PrintInfo(std::cout);
+   //B.PrintMatlab(std::cout);
 
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&Bt);
 
-   std::cout << " v = " << v << std::endl;
-
-   auto lambda_up = [&sdim](const Vector &ControlPointIn, Vector &ControlPointOut) -> void
-   {
-      ControlPointOut[0] = 777777;
-      ControlPointOut[1] = 999999;
-      
-      std::cout << " v(0) = " << ControlPointIn(0) << " v(1) = " << ControlPointIn(1) << std::endl;
-      std::cout << " x(0) = " << ControlPointOut(0) << " x(1) = " << ControlPointOut(1) << std::endl;      
-      return;
-   };
-
-   VectorFunctionCoefficient vfc_up(sdim, lambda_up);
-   v.ProjectBdrCoefficient(vfc_up,vdbc_bdr);
-   std::cout << " v = " << v << std::endl;
-
-   //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
-   //v.ProjectCoefficient(vdbcCoef, vdbc_bdr);
-   std::cout << " p = " << p << std::endl;
-   ConstantCoefficient pdbcCoef(pdbc_val);
-   p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
-   std::cout << " p = " << p << std::endl;
-
-
+   /*
    std::cout << " x.size = " << " 0 to " << x.BlockSize(0)-1 << std::endl; 
    for (int i = 0; i < x.BlockSize(0); i++) {
       std::cout << x(i) << std::endl;
@@ -291,12 +318,12 @@ int main(int argc, char *argv[])
    for (int i = 0; i < getArrayLength; i++) {
       std::cout << pres_ess_tdof_list[i] << std::endl;
    }
-
+   */
 
    
    // 9. SOLVER
    // setup MINRES solver
-   int maxIter(1);
+   int maxIter(100);
    double rtol(1.e-10);
    double atol(1.e-10);
 
@@ -367,11 +394,16 @@ int main(int argc, char *argv[])
       p.Save(p_ofs);
    }
    
-   std::cout << " v.sol = " << v << std::endl;
-   std::cout << " p.sol = " << p << std::endl;
+   //std::cout << " v.sol = " << v << std::endl;
+   //std::cout << " p.sol = " << p << std::endl;
    std::cout << " vfes = " << vfes->GetTrueVSize() << std::endl;
    std::cout << " pfes = " << pfes->GetTrueVSize() << std::endl;
 
+   //F.Print(std::cout);
+   //std::cout << " RHS F= " << std::endl;
+   //rhs.GetBlock(0).Print(std::cout);
+   //std::cout << " RHS G= " << std::endl;
+   //rhs.GetBlock(1).Print(std::cout);
 
    {
       char vishost[] = "localhost";
@@ -399,11 +431,11 @@ int main(int argc, char *argv[])
    pres_ess_tdof_list = 0;
 
 
-   
+   /*   
    A.PrintInfo(std::cout);
    A.PrintMatlab(std::cout);
    B.PrintInfo(std::cout);
    B.PrintMatlab(std::cout);
-   
+   */
    return 0;
 }

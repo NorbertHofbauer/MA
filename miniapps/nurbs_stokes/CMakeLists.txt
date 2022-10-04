@@ -9,8 +9,11 @@
 # terms of the BSD-3 license. We welcome feedback and contributions, see file
 # CONTRIBUTING.md for details.
 
-add_mfem_miniapp(nurbs_stokes
+add_mfem_miniapp(
+  nurbs_stokes
   MAIN nurbs_stokes.cpp
+  nurbs_stokes_poiseuille_flow
+  MAIN nurbs_stokes_poiseuille_flow.cpp
   LIBRARIES mfem)
 
 if (MFEM_ENABLE_TESTING)
