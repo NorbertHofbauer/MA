@@ -4,10 +4,10 @@
 //
 // Sample runs:  nurbs_stokes -m ../../mesh/pipe-nurbs-boundary-test_2.mesh
 //
-// Description:  nurbs stokes solver
+// Description:  nurbs_stokes_poiseuille_flow
 //
 // TODO: - for building an MPI application we need to integrate the "Par" everywhere!
-//       - degree elevation?
+
 
 
 
@@ -26,32 +26,14 @@ void vec_up(const Vector &, Vector &);
 int main(int argc, char *argv[])
 {
    // 0. Setup
-   //double vdbc_val_0_0 = 0;
-   //double vdbc_val_0_1 = 0;
-   //double vdbc_val_2_0 = 0;
-   //double vdbc_val_2_1 = 5;
-   double pdbc_val = 55;
-   //double pdbc_val2 = 22;
-   //double vnbc_val = 0;
-   //double pnbc_val = 0;
-
-   /*
-   auto lambda_up = [vdbc_val_2_0,vdbc_val_2_1] (const Vector &bdr_up)->std::vector<double>
-   {
-      std::vector<double> vec_up(3);
-      vec_up(0)=vdbc_val_2_0;
-      vec_up(1)=vdbc_val_2_1;
-      vec_up(2)=0.0;
-      std::cout << " x(0) = " << bdr_up(0) << " x(1) = " << bdr_up(1) << " x(2) = " << bdr_up(2) << std::endl;
-      return vec_up;
-   };
-   */
+   double v_max = 28;
+   double pdbc_val = 0;
 
    // 1. Parse command-line options.
-   //const char *mesh_file = "../../../MA/mesh/pipe-nurbs-boundary-test_2.mesh";
+   //const char *mesh_file = "../../../MA/data/pipe-nurbs-boundary-test_2.mesh";
    const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";
 
-   int ref_levels = 0;
+   int ref_levels = 5;
    bool visualization = 1;
    Array<int> order(1);
    order[0] = 3;
@@ -141,8 +123,8 @@ int main(int argc, char *argv[])
    
    // Dirichlet
    Array<int> vdbc_bdr(mesh->bdr_attributes.Max());
-   Array<int> vdbc_bdr_up(mesh->bdr_attributes.Max());
-   Array<int> vdbc_bdr_down(mesh->bdr_attributes.Max());
+   Array<int> vdbc_bdr_noslip(mesh->bdr_attributes.Max());
+   Array<int> vdbc_bdr_inlet(mesh->bdr_attributes.Max());
    Array<int> pdbc_bdr(mesh->bdr_attributes.Max());
    std::cout << " bdr attributes " << mesh->bdr_attributes.Max() << std::endl;
    // Neumann
@@ -151,11 +133,11 @@ int main(int argc, char *argv[])
    
    // we assume that the boundary attribute 1,2 are dirchlet, we want to use either pressure or velocity or a mix
    //vdbc_bdr = 0; vdbc_bdr[0] = 1; vdbc_bdr[2] = 1;
-   vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; 
-   vdbc_bdr_up = 0; vdbc_bdr_up[2] = 1; 
-   vdbc_bdr_down = 0; vdbc_bdr_down[0] = 1; 
+   vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; vdbc_bdr[3] = 1;  
+   vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; 
+   vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1;  // poiseuille flow
    
-   pdbc_bdr = 0; pdbc_bdr[1] = 0;
+   pdbc_bdr = 0; pdbc_bdr[1] = 1;
 
    Array<int> vel_ess_tdof_list;
    Array<int> pres_ess_tdof_list;
@@ -221,7 +203,8 @@ int main(int argc, char *argv[])
    // grad pressure term
    MixedBilinearForm b(pfes,vfes); // (trial,test)
    ConstantCoefficient minusOne(-1.0);
-   b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne))); 
+   //b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne))); 
+   b.AddDomainIntegrator(new GradientIntegrator(minusOne));
    b.Assemble();
    //b.Finalize();
 
@@ -235,30 +218,35 @@ int main(int argc, char *argv[])
 
    //std::cout << " v = " << v << std::endl;
 
-   auto lambda_up = [&sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
-   {
-      VelocityValue[0] = 10;
-      VelocityValue[1] = 0;
-      
-      std::cout << " v(0) = " << QuadraturPointPosition(0) << " v(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;            
-      return;
-   };
-
-   auto lambda_down = [&sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
+   auto lambda_noslip = [&sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
    {
       VelocityValue[0] = 0;
       VelocityValue[1] = 0;
       
       std::cout << " v(0) = " << QuadraturPointPosition(0) << " v(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;          
+      std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;      
       return;
    };
 
-   VectorFunctionCoefficient vfc_up(sdim, lambda_up);
-   VectorFunctionCoefficient vfc_down(sdim, lambda_down);
-   v.ProjectBdrCoefficient(vfc_up,vdbc_bdr_up);
-   v.ProjectBdrCoefficient(vfc_down,vdbc_bdr_down);
+   auto lambda_inlet = [&v_max, &sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
+   {
+      /*
+      v=4(h-y)y/h²*v_max
+      */
+      double h=1;
+      //VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      VelocityValue[0] = v_max;
+      VelocityValue[1] = 0;
+      
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
+      return;
+   };
+
+   VectorFunctionCoefficient vfc_noslip(sdim, lambda_noslip);
+   VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet);
+   v.ProjectBdrCoefficient(vfc_noslip,vdbc_bdr_noslip);
+   v.ProjectBdrCoefficient(vfc_inlet,vdbc_bdr_inlet);
    std::cout << " v = " << v << std::endl;
 
    //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
@@ -305,7 +293,6 @@ int main(int argc, char *argv[])
    //stokesOp.SetBlock(1,0,&Bt);
    stokesOp.SetBlock(1,0,&C);
 
-
    /*
    std::cout << " x.size = " << " 0 to " << x.BlockSize(0)-1 << std::endl; 
    for (int i = 0; i < x.BlockSize(0); i++) {
@@ -333,7 +320,7 @@ int main(int argc, char *argv[])
    
    // 9. SOLVER
    // setup MINRES solver
-   int maxIter(100);
+   int maxIter(10000);
    double rtol(1.e-10);
    double atol(1.e-10);
 
