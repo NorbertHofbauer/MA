@@ -1,16 +1,5 @@
-//                          MFEM - NURBS Version
-//
-// Compile with: make nurbs_stokes
-//
-// Sample runs:  nurbs_stokes -m ../../mesh/pipe-nurbs-boundary-test_2.mesh
-//
-// Description:  nurbs_stokes_poiseuille_flow
-//
-// TODO: - for building an MPI application we need to integrate the "Par" everywhere!
 
-
-
-
+#include "nurbs_stokes_weak_bc.hpp"
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>
@@ -21,20 +10,20 @@
 //using namespace std; // bad idea!!!!
 //using namespace mfem;
 
-
-
 int main(int argc, char *argv[])
 {
    // 0. Setup
    double v_max = 28;
    double pdbc_val = 100;
-   double kin_viscosity = 20000;
+   double kin_viscosity = 1;
+   double sigma = -1.0;
+   double kappa = 10;
    // 1. Parse command-line options.
    //const char *mesh_file = "../../../MA/data/pipe-nurbs-boundary-test_2.mesh";
    //const char *mesh_file = "../../../MA/data/quad_nurbs_2.mesh";
    const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";
 
-   int ref_levels = 3;
+   int ref_levels = 0;
    bool visualization = 1;
    mfem::Array<int> order(1);
    order[0] = 3;
@@ -163,7 +152,6 @@ int main(int argc, char *argv[])
    /*
       x = [ v ]      rhs = [ f ]
           [ p ]            [ g ]
-      
    */
 
    x = 0.0;
@@ -173,52 +161,7 @@ int main(int argc, char *argv[])
    mfem::GridFunction v, p;
    v.MakeRef(vfes, x.GetBlock(0), 0);
    p.MakeRef(pfes, x.GetBlock(1), 0);
-   
-   // Setup bilinear and linear forms
 
-   // rhs of momentum equation
-   // LinearForm f(vfes);  
-   mfem::Vector vzero(sdim);
-   vzero = 0.;
-   mfem::VectorConstantCoefficient vcczero(vzero);
-
-   mfem::LinearForm *f(new mfem::LinearForm);
-   f->Update(vfes, rhs.GetBlock(0),0);   
-   f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
-   f->Assemble();
-   
-   // rhs for continuity equation
-   mfem::ConstantCoefficient zero(0.0);
-   mfem::LinearForm *g(new mfem::LinearForm);
-   g->Update(pfes, rhs.GetBlock(1), 0);
-   g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero));
-   g->Assemble();
-   
-   // Momentum equation
-   // diffusion term
-   mfem::BilinearForm a(vfes);
-   mfem::ConstantCoefficient kin_vis(kin_viscosity);
-   a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim));
-   a.Assemble();
-   //a.Finalize();
-
-   // grad pressure term
-   mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
-   mfem::ConstantCoefficient minusOne(-1.0);
-   //b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne))); 
-   b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne));
-   b.Assemble();
-   //b.Finalize();
-
-   // continuity term
-   mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
-   mfem::ConstantCoefficient One(1.0);
-   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One)); 
-   c.Assemble();
-   //c.Finalize();
-
-
-   //std::cout << " v = " << v << std::endl;
 
    auto lambda_noslip = [&sdim](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
    {
@@ -258,6 +201,64 @@ int main(int argc, char *argv[])
    p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
    std::cout << " p = " << p << std::endl;
 
+   // Setup bilinear and linear forms
+
+   // rhs of momentum equation
+   // LinearForm f(vfes);  
+   mfem::Vector vzero(sdim);
+   vzero = 0.;
+   mfem::VectorConstantCoefficient vcczero(vzero);
+
+   mfem::LinearForm *f(new mfem::LinearForm);
+   f->Update(vfes, rhs.GetBlock(0),0);   
+   f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
+   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,
+                                                             kappa,sdim));
+   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,
+                                                             kappa,sdim));
+   f->Assemble();
+   
+   // rhs for continuity equation
+   mfem::ConstantCoefficient zero(0.0);
+   mfem::LinearForm *g(new mfem::LinearForm);
+   g->Update(pfes, rhs.GetBlock(1), 0);
+   g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero));
+   g->AddBdrFaceIntegrator(new BoundaryNormalLFIntegrator_mod(vfc_noslip));
+   g->AddBdrFaceIntegrator(new BoundaryNormalLFIntegrator_mod(vfc_inlet));  
+   g->Assemble();
+   
+   // Momentum equation
+   // diffusion term
+   mfem::BilinearForm a(vfes);
+   mfem::ConstantCoefficient kin_vis(kin_viscosity);
+   a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim));
+   a.AddInteriorFaceIntegrator(new VectorDGDiffusionIntegrator(sigma,kappa,sdim));
+   a.AddBdrFaceIntegrator(new VectorDGDiffusionIntegrator(sigma,kappa,sdim));
+   a.Assemble();
+   a.Finalize();
+
+   // grad pressure term
+   mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
+   mfem::ConstantCoefficient minusOne(-1.0);
+   b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne));
+   b.AddInteriorFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
+   b.AddBdrFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
+   b.Assemble();
+   b.Finalize();
+
+   // continuity term
+   mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
+   mfem::ConstantCoefficient One(1.0);
+   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One));
+   c.AddInteriorFaceIntegrator(new mfem::TransposeIntegrator(new DGAvgNormalJumpIntegrator(sdim)));
+   c.AddBdrFaceIntegrator(new mfem::TransposeIntegrator(new DGAvgNormalJumpIntegrator(sdim))); 
+   c.Assemble();
+   c.Finalize();
+
+
+   //std::cout << " v = " << v << std::endl;
+
+   /*
    mfem::SparseMatrix A,B,C;
    mfem::Vector V, F;
    mfem::Vector P, G;
@@ -269,6 +270,7 @@ int main(int argc, char *argv[])
    a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F);
    b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, G);
    c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, F);
+   */
 
    // Setup stokes operator
    /*
@@ -279,11 +281,11 @@ int main(int argc, char *argv[])
    // for this code f,g = 0
 
    mfem::BlockOperator stokesOp(block_offsets);
-
-   //SparseMatrix &A(a.SpMat());
-   //SparseMatrix &B(b.SpMat());
-   //B.EnsureMultTranspose();
-   //TransposeOperator Bt(&B);
+   //mfem::SparseMatrix A,B,C;
+   mfem::SparseMatrix &A(a.SpMat());
+   mfem::SparseMatrix &B(b.SpMat());
+   mfem::SparseMatrix &C(c.SpMat());
+ 
 
    //A.PrintInfo(std::cout);
    //A.PrintMatlab(std::cout);
@@ -292,50 +294,12 @@ int main(int argc, char *argv[])
 
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
-   //stokesOp.SetBlock(1,0,&Bt);
    stokesOp.SetBlock(1,0,&C);
-
-   /*
-   std::cout << " x.size = " << " 0 to " << x.BlockSize(0)-1 << std::endl; 
-   for (int i = 0; i < x.BlockSize(0); i++) {
-      std::cout << x(i) << std::endl;
-   }
-
-   std::cout << " x.size = " << x.BlockSize(0) << " to " << x.BlockSize(0)+x.BlockSize(1)-1 << std::endl; 
-   for (int i = x.BlockSize(0); i < x.BlockSize(0)+x.BlockSize(1); i++) {
-      std::cout << x(i) << std::endl;
-   }
-
-   int getArrayLength = vel_ess_tdof_list.Size();
-   std::cout << "sizeof(vel_ess_tdof_list) " << getArrayLength << std::endl;
-   for (int i = 0; i < getArrayLength; i++) {
-      std::cout << vel_ess_tdof_list[i] << std::endl;
-   }
-
-   getArrayLength = pres_ess_tdof_list.Size();
-   std::cout << "sizeof(pres_ess_tdof_list) " << getArrayLength << std::endl;
-   for (int i = 0; i < getArrayLength; i++) {
-      std::cout << pres_ess_tdof_list[i] << std::endl;
-   }
-   */
-
-   /*
-   mfem::Operator &mfem::BlockOperator::GetGradient(const mfem::Vector &x) const
-   {
-      //delete Jacobian;
-      // rho(u[n+1])' M du
-      //mfem::SparseMatrix *grad_M = dynamic_cast<mfem::SparseMatrix *>(&M->GetGradient(x));
-      // rho(u[n+1])' K du + rho K du
-      mfem::SparseMatrix grad_A = dynamic_cast<mfem::SparseMatrix *>(&A->GetGradient(x));
-      //Jacobian = Add(1.0, *grad_M, dt, *grad_K);
-      return *grad_A;
-   }
-   */
 
    
    // 9. SOLVER
    // setup solver
-   int maxIter(10000);
+   int maxIter(100);
    double rtol(1.e-10);
    double atol(1.e-10);
 
@@ -405,8 +369,8 @@ int main(int argc, char *argv[])
       p.Save(p_ofs);
    }
    
-   //std::cout << " v.sol = " << v << std::endl;
-   //std::cout << " p.sol = " << p << std::endl;
+   std::cout << " v.sol = " << v << std::endl;
+   std::cout << " p.sol = " << p << std::endl;
    std::cout << " vfes = " << vfes->GetTrueVSize() << std::endl;
    std::cout << " pfes = " << pfes->GetTrueVSize() << std::endl;
 

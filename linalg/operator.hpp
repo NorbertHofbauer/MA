@@ -97,7 +97,7 @@ public:
    /** @brief Evaluate the gradient operator at the point @a x. The default
        behavior in class Operator is to generate an error. */
    virtual Operator &GetGradient(const Vector &x) const
-   {
+   {  
       mfem_error("Operator::GetGradient() is not overloaded!");
       return const_cast<Operator &>(*this);
    }
