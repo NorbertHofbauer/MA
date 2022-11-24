@@ -625,70 +625,127 @@ void DGAvgNormalJumpIntegrator::AssembleFaceMatrix(const mfem::FiniteElement &tr
    }
 }
 
-// Class for boundary integration of the linear form g = < q, v_dirichlet \cdot n_e >
-class BoundaryNormalLFIntegrator_mod : public mfem::LinearFormIntegrator
+
+// boundary terms from grad pressure term
+/*
+   < {p},[v]*nor > + kappa <{h^{-1} Q} [p],[v]> + sigma <[p],{(Q grad(v)).n}>
+*/
+class BIntegrator : public mfem::BilinearFormIntegrator
 {
-   mfem::Vector shape;
-   mfem::VectorCoefficient &Q;
-   int oa, ob;
+private:
+   const int vdim;
+   mfem::Coefficient *Q;
+   mfem::MatrixCoefficient *MQ;
+   double sigma, kappa;
+   mfem::DenseMatrix jmat,smat,adjJ, te_ds1;
+   mfem::Vector ni, nh;
+
 public:
-   /// Constructs a boundary integrator with a given Coefficient QG
-   BoundaryNormalLFIntegrator_mod(mfem::VectorCoefficient &QG, int a = 1, int b = 1)
-      : Q(QG), oa(a), ob(b) { }
+   BIntegrator(const double s, const double k, const int vdim_) : Q(NULL), MQ(NULL), sigma(s), kappa(k), vdim(vdim_) { }
+   //BIntegrator(mfem::Coefficient &q, const double s, const double k, const int vdim_) : Q(&q), MQ(NULL), sigma(s), kappa(k), vdim(vdim_) { }
+   //BIntegrator(mfem::MatrixCoefficient &q, const double s, const double k, const int vdim_) : Q(NULL), MQ(&q), sigma(s), kappa(k), vdim(vdim_) { }
 
-   virtual void AssembleRHSElementVect(const mfem::FiniteElement &el,
-                                       mfem::ElementTransformation &Tr,
-                                       mfem::Vector &elvect);
-
-   virtual void AssembleRHSElementVect(const mfem::FiniteElement &el,
-                                       mfem::FaceElementTransformations &Tr,
-                                       mfem::Vector &elvect); // added this
-
-   using LinearFormIntegrator::AssembleRHSElementVect;
+   void AssembleFaceMatrix(const mfem::FiniteElement &tr_fe1,
+                           const mfem::FiniteElement &tr_fe2,
+                           const mfem::FiniteElement &te_fe1,
+                           const mfem::FiniteElement &te_fe2,
+                           mfem::FaceElementTransformations &T,
+                           mfem::DenseMatrix &elmat);
 };
-
-void BoundaryNormalLFIntegrator_mod::AssembleRHSElementVect(
-   const mfem::FiniteElement &el, mfem::ElementTransformation &Tr, mfem::Vector &elvect)
+void BIntegrator::AssembleFaceMatrix(const mfem::FiniteElement &tr_fe1,
+                                     const mfem::FiniteElement &tr_fe2,
+                                     const mfem::FiniteElement &te_fe1,
+                                     const mfem::FiniteElement &te_fe2,
+                                     mfem::FaceElementTransformations &T,
+                                     mfem::DenseMatrix &elmat)
 {
-   std::cout << "Not Implemented" << std::endl;
-}
 
-void BoundaryNormalLFIntegrator_mod::AssembleRHSElementVect(
-   const mfem::FiniteElement &el, mfem::FaceElementTransformations &Tr, mfem::Vector &elvect)
-{
-   int dim = el.GetDim();
-   int dof = el.GetDof();
-   mfem::Vector nor(dim), Qvec;
+bool kappa_is_nonzero = (kappa != 0.);
+double w, wq = 0.0;
 
-   shape.SetSize(dof);
-   elvect.SetSize(dof);
-   elvect = 0.0;
+
+// test space here is the velocity (vector space), trial space is pressure (scalar space)
+   int dim = tr_fe1.GetDim();
+   int tr_ndof1, te_ndof1, tr_ndof2, te_ndof2, tr_ndofs, te_ndofs;
+   tr_ndof1 = tr_fe1.GetDof();
+   te_ndof1 = te_fe1.GetDof();
+
+   nh.SetSize(dim);
+   ni.SetSize(dim);
+
+   if (T.Elem2No >= 0)
+   {
+      tr_ndof2 = tr_fe2.GetDof();
+      te_ndof2 = te_fe2.GetDof();
+   }
+   else
+   {
+      tr_ndof2 = 0;
+      te_ndof2 = 0;
+   }
+
+   tr_ndofs = tr_ndof1 + tr_ndof2;
+   te_ndofs = te_ndof1 + te_ndof2;
+   elmat.SetSize(te_ndofs*vdim, tr_ndofs);
+   elmat = 0.0;
+   if (kappa_is_nonzero)
+   {
+      jmat.SetSize(te_ndofs*vdim, tr_ndofs);
+      jmat = 0.;
+   }
+   smat.SetSize(te_ndofs*vdim, tr_ndofs); // for sigma term
+   smat = 0.;
+
+   mfem::Vector ortho(dim), nor(dim);
+   mfem::Vector tr_s1(tr_ndof1);
+   mfem::Vector tr_s2(tr_ndof2);
+   mfem::Vector te_s1(te_ndof1);
+   mfem::Vector te_s2(te_ndof2);   
+   te_ds1.SetSize(te_ndofs,vdim);
+   mfem::Vector te_ds1n(te_ndof1);
 
    const mfem::IntegrationRule *ir = IntRule;
    if (ir == NULL)
    {
-      // a simple choice for the integration order;
-      int order = 2*el.GetOrder() + 2;
-      ir = &mfem::IntRules.Get(Tr.GetGeometryType(), order);
-   }
-
-   for (int i = 0; i < ir->GetNPoints(); i++)
-   {
-      const mfem::IntegrationPoint &ip = ir->IntPoint(i);
-
-      // Set the integration point in the face and the neighboring element
-      Tr.SetAllIntPoints(&ip);
-
-      // Access the neighboring element's integration point
-      const mfem::IntegrationPoint &eip = Tr.GetElement1IntPoint();
-      if (dim == 1)
+      int order;
+      if (tr_ndof2)
       {
-         nor(0) = 2*eip.x - 1.0;
+         order = 2*(std::max(tr_fe1.GetOrder(), tr_fe2.GetOrder()) + std::max(te_fe1.GetOrder(),
+                                                                    te_fe2.GetOrder())) + 2;
       }
       else
       {
-         CalcOrtho(Tr.Jacobian(), nor); // normal in reference space
+         order = 2*(tr_fe1.GetOrder() + te_fe1.GetOrder()) + 2;
+      }
+      ir = &mfem::IntRules.Get(T.GetGeometryType(), order);
+   }
 
+   // elmat = [ A11   A12 ]
+   //         [ A21   A22 ]
+   // where the blocks corresponds to the terms in the face integral < {p},[v]*nor > from
+   // the different elements and trial/test space, i.e.
+   // A11 : terms from element 1 test and element 1 trial space
+   // A21 : terms from element 2 test and element 1 trial space
+   mfem::DenseMatrix A11(te_ndof1*vdim, tr_ndof1);
+   mfem::DenseMatrix A12(te_ndof1*vdim, tr_ndof2);
+   mfem::DenseMatrix A21(te_ndof2*vdim, tr_ndof1);
+   mfem::DenseMatrix A22(te_ndof2*vdim, tr_ndof2);
+   double detJ;
+   for (int n=0; n<ir->GetNPoints(); n++)
+   {
+      const mfem::IntegrationPoint &ip = ir->IntPoint(n);
+      T.SetAllIntPoints(&ip);
+      const mfem::IntegrationPoint &eip1 = T.GetElement1IntPoint();
+      const mfem::IntegrationPoint &eip2 = T.GetElement2IntPoint();
+
+      // normal
+      if (dim == 1)
+      {
+         nor(0) = 2*eip1.x - 1.0;
+      }
+      else
+      {
+         CalcOrtho(T.Jacobian(), nor);
       }
 
       // normalize nor, see example 18 in general it is not a unit normal
@@ -700,10 +757,112 @@ void BoundaryNormalLFIntegrator_mod::AssembleRHSElementVect(
       normag = sqrt(normag);
       nor *= 1/normag;
 
-      // eval coefficient Q and shape functions at current integration point
-      Q.Eval(Qvec, Tr, ip);
-      el.CalcShape(eip, shape);
+      // below if statement needed so on the boundary {p} = p (definition of {} operator)
+      if (T.Elem2No >= 0)
+      {
+         w = ip.weight;
+      }
+      else
+      {
+         w = ip.weight*2;
+      }
+      detJ = T.Weight();
 
-      elvect.Add(Tr.Weight()*ip.weight*(Qvec*nor), shape);
+      // calc shape functions in element 1 at current integration point
+      tr_fe1.CalcShape(eip1, tr_s1);
+      te_fe1.CalcShape(eip1, te_s1);
+      // calc derivative of shape functions in element 1 at current integration point in test space
+      te_fe1.CalcDShape(eip1, te_ds1);
+      
+      te_ds1.Mult(nor,te_ds1n);
+
+      // calc ni and wq
+      ni.Set(w, nor);
+      if (kappa_is_nonzero)
+      {
+         wq = ni * nor;
+      }
+
+
+      // form A11
+      for (int d = 0; d<vdim; d++)
+      {
+         for (int i = 0; i < te_ndof1; i++)
+         {
+            for (int j = 0; j < tr_ndof1; j++)
+            {
+               A11(i + te_ndof1*d,j) += 0.5*tr_s1(j)*(te_s1(i)*nor(d))*w*detJ;
+            }
+         }
+      }
+
+      // if element 2 exists form the rest of the blocks, should never exist for the pure boundary integral
+      if (tr_ndof2)
+      {
+         std::cout <<"nope thats not good, should not exist, you have to take a look into it";
+      }
+
+      if (kappa_is_nonzero)
+      {
+         wq *= kappa;
+         for (int d = 0; d<vdim; d++)
+         {
+            for (int i = 0; i < te_ndof1; i++)
+            {
+               for (int j = 0; j < tr_ndof1; j++)
+               {
+                  const double wsi = wq*tr_s1(j);
+                  jmat(i + te_ndof1*d,j) += wsi*te_s1(i);
+               }
+            }
+         }
+
+         if (tr_ndof2) // if element 2 exists form the rest of the blocks, should never exist for the pure boundary integral
+         {
+            std::cout <<"nope thats not good, should not exist, you have to take a look into it";
+         }
+      }
+
+      // calc sigma term
+      
+      for (int d = 0; d<vdim; d++)
+      {
+         for (int i = 0; i < te_ndof1; i++)
+         {
+            for (int j = 0; j < tr_ndof1; j++)
+            {
+               smat(i + te_ndof1*d,j) += 0.5*tr_s1(j)*te_ds1n(i)*w*detJ;
+            }
+         }
+      }
+
+      if (tr_ndof2) // if element 2 exists form the rest of the blocks, should never exist for the pure boundary integral
+      {
+         std::cout <<"nope thats not good, should not exist, you have to take a look into it";
+      }
+      
+      // A11 := +A11 + smat + jmat <- if kappa_is_nonzero
+      // A11 := +A11 + smat
+      if (kappa_is_nonzero)
+      {
+
+      }
+      else
+      {
+
+      }
    }
+
+   // populate elmat with the blocks computed above
+   elmat.AddMatrix(A11,0,0);
+   if (tr_ndof2) // should not exist for pure boundary integrator
+   {
+      elmat.AddMatrix(A12, 0, tr_ndof1);
+      elmat.AddMatrix(A21, vdim*te_ndof1, 0);
+      elmat.AddMatrix(A22, vdim*te_ndof1, tr_ndof1);
+   }
+
+
+
+
 }

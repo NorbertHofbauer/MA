@@ -212,8 +212,9 @@ int main(int argc, char *argv[])
    mfem::LinearForm *f(new mfem::LinearForm);
    f->Update(vfes, rhs.GetBlock(0),0);   
    f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
-   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,kappa,sdim));
-   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,kappa,sdim));
+   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,kappa,sdim),vdbc_bdr_noslip);
+   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,kappa,sdim),vdbc_bdr_inlet);
+   //f->AddBdrFaceIntegrator(new mfem::DGDirichletLFIntegrator(pdbcCoef,sigma,kappa),pdbc_bdr);
    f->Assemble();
    
    // rhs for continuity equation
@@ -236,7 +237,8 @@ int main(int argc, char *argv[])
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    mfem::ConstantCoefficient minusOne(-1.0);
    b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne));
-   b.AddBdrFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
+   //b.AddBdrFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
+   b.AddBdrFaceIntegrator(new BIntegrator(sigma,kappa,sdim));
    b.Assemble();
    b.Finalize();
 
@@ -292,7 +294,7 @@ int main(int argc, char *argv[])
    
    // 9. SOLVER
    // setup solver
-   int maxIter(1000);
+   int maxIter(5);
    double rtol(1.e-12);
    double atol(1.e-12);
 
