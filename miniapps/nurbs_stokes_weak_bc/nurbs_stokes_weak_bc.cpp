@@ -190,16 +190,16 @@ int main(int argc, char *argv[])
 
    mfem::VectorFunctionCoefficient vfc_noslip(sdim, lambda_noslip);
    mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet);
-   v.ProjectBdrCoefficient(vfc_noslip,vdbc_bdr_noslip);
-   v.ProjectBdrCoefficient(vfc_inlet,vdbc_bdr_inlet);
-   std::cout << " v = " << v << std::endl;
+   //v.ProjectBdrCoefficient(vfc_noslip,vdbc_bdr_noslip);
+   //v.ProjectBdrCoefficient(vfc_inlet,vdbc_bdr_inlet);
+   //std::cout << " v = " << v << std::endl;
 
    //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
    //v.ProjectCoefficient(vdbcCoef, vdbc_bdr);
    //std::cout << " p = " << p << std::endl;
    mfem::ConstantCoefficient pdbcCoef(pdbc_val);
-   p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
-   std::cout << " p = " << p << std::endl;
+   //p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
+   //std::cout << " p = " << p << std::endl;
 
    // Setup bilinear and linear forms
 
@@ -215,6 +215,7 @@ int main(int argc, char *argv[])
    f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,kappa,sdim),vdbc_bdr_noslip);
    f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,kappa,sdim),vdbc_bdr_inlet);
    //f->AddBdrFaceIntegrator(new mfem::DGDirichletLFIntegrator(pdbcCoef,sigma,kappa),pdbc_bdr);
+   
    f->Assemble();
    
    // rhs for continuity equation
@@ -250,20 +251,6 @@ int main(int argc, char *argv[])
    c.Finalize();
 
    //std::cout << " v = " << v << std::endl;
-
-   /*
-   mfem::SparseMatrix A,B,C;
-   mfem::Vector V, F;
-   mfem::Vector P, G;
-   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO);
-   //a.EliminateVDofs(vel_ess_tdof_list, diag);
-   //a.Finalize();
-   //a.FormSystemMatrix(vel_ess_tdof_list, A);
-   //b.FormRectangularSystemMatrix(pres_ess_tdof_list, vel_ess_tdof_list, B);
-   a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F);
-   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, G);
-   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, F);
-   */
 
    // Setup stokes operator
    /*

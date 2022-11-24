@@ -672,6 +672,7 @@ double w, wq = 0.0;
 
    nh.SetSize(dim);
    ni.SetSize(dim);
+   adjJ.SetSize(dim);
 
    if (T.Elem2No >= 0)
    {
@@ -760,29 +761,31 @@ double w, wq = 0.0;
       // below if statement needed so on the boundary {p} = p (definition of {} operator)
       if (T.Elem2No >= 0)
       {
-         w = ip.weight;
+         w = ip.weight/T.Weight();
       }
       else
       {
-         w = ip.weight*2;
+         w = ip.weight*2/T.Weight();
       }
-      detJ = T.Weight();
 
+      // calc ni and wq
+      ni.Set(w, nor);
+
+      CalcAdjugate(T.Elem1->Jacobian(), adjJ);
+      adjJ.Mult(ni, nh);
+      
       // calc shape functions in element 1 at current integration point
       tr_fe1.CalcShape(eip1, tr_s1);
       te_fe1.CalcShape(eip1, te_s1);
       // calc derivative of shape functions in element 1 at current integration point in test space
       te_fe1.CalcDShape(eip1, te_ds1);
       
-      te_ds1.Mult(nor,te_ds1n);
-
-      // calc ni and wq
-      ni.Set(w, nor);
+      te_ds1.Mult(nh,te_ds1n);
+      
       if (kappa_is_nonzero)
       {
          wq = ni * nor;
       }
-
 
       // form A11
       for (int d = 0; d<vdim; d++)
@@ -791,7 +794,7 @@ double w, wq = 0.0;
          {
             for (int j = 0; j < tr_ndof1; j++)
             {
-               A11(i + te_ndof1*d,j) += 0.5*tr_s1(j)*(te_s1(i)*nor(d))*w*detJ;
+               A11(i + te_ndof1*d,j) += 0.5*tr_s1(j)*(te_s1(i)*nor(d))*w;
             }
          }
       }
@@ -831,7 +834,7 @@ double w, wq = 0.0;
          {
             for (int j = 0; j < tr_ndof1; j++)
             {
-               smat(i + te_ndof1*d,j) += 0.5*tr_s1(j)*te_ds1n(i)*w*detJ;
+               smat(i + te_ndof1*d,j) += 0.5*tr_s1(j)*te_ds1n(i)*w;
             }
          }
       }
@@ -840,29 +843,20 @@ double w, wq = 0.0;
       {
          std::cout <<"nope thats not good, should not exist, you have to take a look into it";
       }
-      
-      // A11 := +A11 + smat + jmat <- if kappa_is_nonzero
-      // A11 := +A11 + smat
-      if (kappa_is_nonzero)
-      {
-
-      }
-      else
-      {
-
-      }
    }
+
+   // A11 := +A11 + smat + jmat <- if kappa_is_nonzero
+   // A11 := +A11 + smat
+   if (kappa_is_nonzero)
+   {
+      A11.AddMatrix(jmat,0,0);
+   }
+   A11.AddMatrix(smat,0,0);
 
    // populate elmat with the blocks computed above
    elmat.AddMatrix(A11,0,0);
    if (tr_ndof2) // should not exist for pure boundary integrator
    {
-      elmat.AddMatrix(A12, 0, tr_ndof1);
-      elmat.AddMatrix(A21, vdim*te_ndof1, 0);
-      elmat.AddMatrix(A22, vdim*te_ndof1, tr_ndof1);
+      std::cout << "nooooooooooo";
    }
-
-
-
-
 }
