@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
    double v_max = 28;
    double pdbc_val = 100;
    double kin_viscosity = 1;
-   double sigma = -1.0;
+   double sigma = 1.0;
    double kappa = 10;
    // 1. Parse command-line options.
    //const char *mesh_file = "../../../MA/data/pipe-nurbs-boundary-test_2.mesh";
@@ -212,10 +212,8 @@ int main(int argc, char *argv[])
    mfem::LinearForm *f(new mfem::LinearForm);
    f->Update(vfes, rhs.GetBlock(0),0);   
    f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
-   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,
-                                                             kappa,sdim));
-   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,
-                                                             kappa,sdim));
+   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,kappa,sdim));
+   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,kappa,sdim));
    f->Assemble();
    
    // rhs for continuity equation
@@ -223,8 +221,6 @@ int main(int argc, char *argv[])
    mfem::LinearForm *g(new mfem::LinearForm);
    g->Update(pfes, rhs.GetBlock(1), 0);
    g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero));
-   g->AddBdrFaceIntegrator(new BoundaryNormalLFIntegrator_mod(vfc_noslip));
-   g->AddBdrFaceIntegrator(new BoundaryNormalLFIntegrator_mod(vfc_inlet));  
    g->Assemble();
    
    // Momentum equation
@@ -232,7 +228,6 @@ int main(int argc, char *argv[])
    mfem::BilinearForm a(vfes);
    mfem::ConstantCoefficient kin_vis(kin_viscosity);
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim));
-   a.AddInteriorFaceIntegrator(new VectorDGDiffusionIntegrator(sigma,kappa,sdim));
    a.AddBdrFaceIntegrator(new VectorDGDiffusionIntegrator(sigma,kappa,sdim));
    a.Assemble();
    a.Finalize();
@@ -241,7 +236,6 @@ int main(int argc, char *argv[])
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    mfem::ConstantCoefficient minusOne(-1.0);
    b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne));
-   b.AddInteriorFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
    b.AddBdrFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
    b.Assemble();
    b.Finalize();
@@ -250,11 +244,8 @@ int main(int argc, char *argv[])
    mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
    mfem::ConstantCoefficient One(1.0);
    c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One));
-   c.AddInteriorFaceIntegrator(new mfem::TransposeIntegrator(new DGAvgNormalJumpIntegrator(sdim)));
-   c.AddBdrFaceIntegrator(new mfem::TransposeIntegrator(new DGAvgNormalJumpIntegrator(sdim))); 
    c.Assemble();
    c.Finalize();
-
 
    //std::cout << " v = " << v << std::endl;
 
@@ -295,13 +286,15 @@ int main(int argc, char *argv[])
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&C);
+   
+   //stokesOp.SetBlock(1,0,&C);
 
    
    // 9. SOLVER
    // setup solver
-   int maxIter(100);
-   double rtol(1.e-10);
-   double atol(1.e-10);
+   int maxIter(1000);
+   double rtol(1.e-12);
+   double atol(1.e-12);
 
    mfem::StopWatch chrono;
    chrono.Clear();

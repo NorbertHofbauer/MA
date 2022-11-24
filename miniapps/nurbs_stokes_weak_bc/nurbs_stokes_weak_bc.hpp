@@ -1,4 +1,3 @@
-//                                        MFEM Example 34
 
 #pragma once
 
