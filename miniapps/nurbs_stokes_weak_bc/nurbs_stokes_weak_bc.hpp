@@ -731,7 +731,7 @@ double w, wq = 0.0;
    mfem::DenseMatrix A12(te_ndof1*vdim, tr_ndof2);
    mfem::DenseMatrix A21(te_ndof2*vdim, tr_ndof1);
    mfem::DenseMatrix A22(te_ndof2*vdim, tr_ndof2);
-   double detJ;
+
    for (int n=0; n<ir->GetNPoints(); n++)
    {
       const mfem::IntegrationPoint &ip = ir->IntPoint(n);
@@ -760,12 +760,13 @@ double w, wq = 0.0;
 
       // below if statement needed so on the boundary {p} = p (definition of {} operator)
       if (T.Elem2No >= 0)
-      {
-         w = ip.weight/T.Weight();
+      {  
+         std::cout <<"nope thats not good, should not exist, you have to take a look into it";
+         w = ip.weight/2/T.Weight();
       }
       else
       {
-         w = ip.weight*2/T.Weight();
+         w = ip.weight/T.Weight();
       }
 
       // calc ni and wq
@@ -794,7 +795,7 @@ double w, wq = 0.0;
          {
             for (int j = 0; j < tr_ndof1; j++)
             {
-               A11(i + te_ndof1*d,j) += 0.5*tr_s1(j)*(te_s1(i)*nor(d))*w;
+               A11(i + te_ndof1*d,j) += tr_s1(j)*(te_s1(i)*nor(d))*w;
             }
          }
       }
@@ -834,7 +835,7 @@ double w, wq = 0.0;
          {
             for (int j = 0; j < tr_ndof1; j++)
             {
-               smat(i + te_ndof1*d,j) += 0.5*tr_s1(j)*te_ds1n(i)*w;
+               smat(i + te_ndof1*d,j) += tr_s1(j)*te_ds1n(i);
             }
          }
       }

@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
    //const char *mesh_file = "../../../MA/data/quad_nurbs_2.mesh";
    const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";
 
-   int ref_levels = 3;
+   int ref_levels = 0;
    bool visualization = 1;
    mfem::Array<int> order(1);
    order[0] = 3;
@@ -441,7 +441,15 @@ int main(int argc, char *argv[])
    vel_ess_tdof_list = 0;
    pres_ess_tdof_list = 0;
 
+   mfem::Vector vec_f;
+   vec_f = rhs.GetBlock(0);
+   std::cout << "f=\n";
+   vec_f.Print(std::cout,1);
 
+   mfem::Vector vec_g;
+   vec_g = rhs.GetBlock(1);
+   std::cout << "g=\n";
+   vec_g.Print(std::cout,1);
    /*   
    A.PrintInfo(std::cout);
    A.PrintMatlab(std::cout);
@@ -450,3 +458,39 @@ int main(int argc, char *argv[])
    */
    return 0;
 }
+
+
+/*
+0
+0
+0
+0
+0
+0
+0
+0
+42010
+42010
+0
+0
+126005
+84007.5
+126005
+84007.5
+0
+0
+0
+0
+0
+0
+0
+0
+8.88178e-16
+-8.88178e-16
+0
+0
+0
+4.44089e-16
+2.22045e-16
+4.44089e-16
+*/

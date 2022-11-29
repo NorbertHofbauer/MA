@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
    double pdbc_val = 100;
    double kin_viscosity = 1;
    double sigma = 1.0;
-   double kappa = 10;
+   double kappa = 1;
    // 1. Parse command-line options.
    //const char *mesh_file = "../../../MA/data/pipe-nurbs-boundary-test_2.mesh";
    //const char *mesh_file = "../../../MA/data/quad_nurbs_2.mesh";
@@ -167,9 +167,9 @@ int main(int argc, char *argv[])
    {
       VelocityValue[0] = 0;
       VelocityValue[1] = 0;
-      
-      std::cout << " v(0) = " << QuadraturPointPosition(0) << " v(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;      
+      std::cout << " noslip \n" ;
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
       return;
    };
 
@@ -183,8 +183,22 @@ int main(int argc, char *argv[])
       VelocityValue[0] = v_max;
       VelocityValue[1] = 0;
       
+      std::cout << " inlet \n" ;
       std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
       std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
+      return;
+   };
+
+   auto lambda_pressure_outlet = [&pdbc_val, &sdim](const mfem::Vector &QuadraturPointPosition, mfem::Vector &PressureValue) -> void
+   {
+      double h=1;
+      //VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      PressureValue[0] = pdbc_val;
+      PressureValue[1] = pdbc_val;
+      
+      std::cout << " pressure outlet \n" ;
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " p(0) = " << PressureValue(0) << " p(1) = " << PressureValue(1) << std::endl;      
       return;
    };
 
@@ -197,9 +211,12 @@ int main(int argc, char *argv[])
    //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
    //v.ProjectCoefficient(vdbcCoef, vdbc_bdr);
    //std::cout << " p = " << p << std::endl;
-   mfem::ConstantCoefficient pdbcCoef(pdbc_val);
+   //mfem::ConstantCoefficient pdbcCoef(pdbc_val);
+   
+   mfem::VectorFunctionCoefficient pdbcCoef(sdim,lambda_pressure_outlet);
    //p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
    //std::cout << " p = " << p << std::endl;
+
 
    // Setup bilinear and linear forms
 
@@ -212,9 +229,9 @@ int main(int argc, char *argv[])
    mfem::LinearForm *f(new mfem::LinearForm);
    f->Update(vfes, rhs.GetBlock(0),0);   
    f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
-   f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,kappa,sdim),vdbc_bdr_noslip);
+   //f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_noslip,sigma,kappa,sdim),vdbc_bdr_noslip); // hat keinen einfluss auf f
    f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(vfc_inlet,sigma,kappa,sdim),vdbc_bdr_inlet);
-   //f->AddBdrFaceIntegrator(new mfem::DGDirichletLFIntegrator(pdbcCoef,sigma,kappa),pdbc_bdr);
+   //f->AddBdrFaceIntegrator(new VectorDGDirichletLFIntegrator(pdbcCoef,sigma,kappa,sdim),pdbc_bdr);
    
    f->Assemble();
    
@@ -223,6 +240,8 @@ int main(int argc, char *argv[])
    mfem::LinearForm *g(new mfem::LinearForm);
    g->Update(pfes, rhs.GetBlock(1), 0);
    g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero));
+   //mfem::ConstantCoefficient pdbcCoef1(pdbc_val);
+   //g->AddBdrFaceIntegrator(new mfem::DGDirichletLFIntegrator(pdbcCoef1,sigma,kappa),pdbc_bdr);
    g->Assemble();
    
    // Momentum equation
@@ -230,6 +249,7 @@ int main(int argc, char *argv[])
    mfem::BilinearForm a(vfes);
    mfem::ConstantCoefficient kin_vis(kin_viscosity);
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim));
+   a.AddInteriorFaceIntegrator(new VectorDGDiffusionIntegrator(sigma,kappa,sdim));
    a.AddBdrFaceIntegrator(new VectorDGDiffusionIntegrator(sigma,kappa,sdim));
    a.Assemble();
    a.Finalize();
@@ -238,7 +258,6 @@ int main(int argc, char *argv[])
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    mfem::ConstantCoefficient minusOne(-1.0);
    b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne));
-   //b.AddBdrFaceIntegrator(new DGAvgNormalJumpIntegrator(sdim));
    b.AddBdrFaceIntegrator(new BIntegrator(sigma,kappa,sdim));
    b.Assemble();
    b.Finalize();
@@ -281,43 +300,71 @@ int main(int argc, char *argv[])
    
    // 9. SOLVER
    // setup solver
-   int maxIter(5);
-   double rtol(1.e-12);
-   double atol(1.e-12);
+   int maxIter(10000);
+   double rtol(1.e-10);
+   double atol(1.e-10);
 
    mfem::StopWatch chrono;
    chrono.Clear();
    chrono.Start();
-   
-   /*
-   mfem::Solver *J_solver;
-   mfem::Solver *J_prec;
-   J_prec = new mfem::DSmoother(1);
-   mfem::MINRESSolver *J_minres = new mfem::MINRESSolver;
-   J_minres->SetRelTol(rtol);
-   J_minres->SetAbsTol(0.0);
-   J_minres->SetMaxIter(10);
-   J_minres->SetPrintLevel(-1);
-   J_minres->SetPreconditioner(*J_prec);
-   J_solver = J_minres;
-   
-   mfem::NewtonSolver solver;
-   solver.SetSolver(*J_solver);
-   solver.SetAbsTol(atol);
-   solver.SetRelTol(rtol);
-   solver.SetMaxIter(maxIter);
-   solver.SetOperator(stokesOp);
-   solver.SetPrintLevel(1);
-   */
-   
+ 
    mfem::MINRESSolver solver;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
    solver.SetPrintLevel(1);
-   
+/*
+//################
+   mfem::Vector vec_f;
+   vec_f = rhs.GetBlock(0);
+   vec_f.Elem(0) = 0;
+   vec_f.Elem(1) = 0;
+   vec_f.Elem(2) = 0;
+   vec_f.Elem(3) = 0;
+   vec_f.Elem(4) = 0;
+   vec_f.Elem(5) = 0;
+   vec_f.Elem(6) = 0;
+   vec_f.Elem(7) = 0;
+   vec_f.Elem(8) = 42010;
+   vec_f.Elem(9) = 42010;
+   vec_f.Elem(10) = 0;
+   vec_f.Elem(11) = 0;
+   vec_f.Elem(12) = 126005;
+   vec_f.Elem(13) = 84007.5;
+   vec_f.Elem(14) = 126005;
+   vec_f.Elem(15) = 84007.5;
+   vec_f.Elem(16) = 0;
+   vec_f.Elem(17) = 0;
+   vec_f.Elem(18) = 0;
+   vec_f.Elem(19) = 0;
+   vec_f.Elem(20) = 0;
+   vec_f.Elem(21) = 0;
+   vec_f.Elem(22) = 0;
+   vec_f.Elem(23) = 0;
+   vec_f.Elem(24) = 8.88178e-16;
+   vec_f.Elem(25) = -8.88178e-16;
+   vec_f.Elem(26) = 0;
+   vec_f.Elem(27) = 0;
+   vec_f.Elem(28) = 0;
+   vec_f.Elem(29) = 4.44089e-16;
+   vec_f.Elem(30) = 2.22045e-16;
+   vec_f.Elem(31) = 4.44089e-16;
+   rhs.GetBlock(0) = vec_f;
 
+   mfem::Vector vec_g;
+   vec_g = rhs.GetBlock(1);
+   vec_g.Elem(0) = 5.6;
+   vec_g.Elem(1) = 0;
+   vec_g.Elem(2) = 5.6;
+   vec_g.Elem(3) = 0;
+   vec_g.Elem(4) = 2.8;
+   vec_g.Elem(5) = 5.6;
+   vec_g.Elem(6) = 0;
+   vec_g.Elem(7) = 2.8;
+   vec_g.Elem(8) = 2.8;
+   rhs.GetBlock(1) = vec_g;
+*/
    // solve the system
    solver.Mult(rhs, x);
    chrono.Stop();
@@ -372,8 +419,11 @@ int main(int argc, char *argv[])
       p_sock.precision(8);
       p_sock << "solution\n" << mesh << p << "window_title 'Pressure'" << std::endl;
    }
-
-
+   //mfem::Vector vec_f;
+   //vec_f = rhs.GetBlock(0);
+   //vec_f.Print(std::cout,1);
+   //vec_g = rhs.GetBlock(1);
+   //vec_g.Print(std::cout,1);
    // 15. Free the used memory.
    /*delete a;
    delete A;
@@ -384,15 +434,13 @@ int main(int argc, char *argv[])
    delete mesh;
    delete pres_ess_tdof_list;
    delete vel_ess_tdof_list;*/
-   vel_ess_tdof_list = 0;
-   pres_ess_tdof_list = 0;
 
-
-   /*   
-   A.PrintInfo(std::cout);
-   A.PrintMatlab(std::cout);
-   B.PrintInfo(std::cout);
-   B.PrintMatlab(std::cout);
-   */
+      
+   //A.PrintInfo(std::cout);
+   //A.PrintMatlab(std::cout);
+   //B.PrintInfo(std::cout);
+   //B.PrintMatlab(std::cout);
+   
    return 0;
 }
+
