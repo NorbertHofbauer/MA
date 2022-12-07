@@ -1,62 +1,44 @@
 //                          MFEM - NURBS Version
 //
+// equations can be viewed in overleaf
+// here we use strongly imposed dirichlet boundary conditions
+// https://www.overleaf.com/project/62a3a05e216fe69ec1a7b6ac
+//
 // Compile with: make nurbs_stokes
 //
-// Sample runs:  nurbs_stokes -m ../../mesh/pipe-nurbs-boundary-test_2.mesh
-//
-// Description:  nurbs stokes solver
+// Description:  nurbs_stokes with the testcase poiseuille flow
 //
 // TODO: - for building an MPI application we need to integrate the "Par" everywhere!
-//       - degree elevation?
 
 
+#include "mfem.hpp" // include mfem project
+#include <fstream>  // fstream for input and output in textfiles
+#include <iostream> // for output to the console
 
-#include "mfem.hpp"
-#include <fstream>
-#include <iostream>
+#include <algorithm> // to get access to math functions
+#include <cmath>     // to get access to math functions
 
-#include <algorithm>
-#include <cmath>
-
+// we don`t want to use namespaces here, otherwise code is harder to unterstand, e.g. mfem::Vector != std::vector
 //using namespace std; // bad idea!!!!
-using namespace mfem;
+//using namespace mfem;
 
-void vec_up(const Vector &, Vector &);
-
+// we build one main in this file, self build classes have to be included later if necessary
 int main(int argc, char *argv[])
 {
-   // 0. Setup
-   //double vdbc_val_0_0 = 0;
-   //double vdbc_val_0_1 = 0;
-   //double vdbc_val_2_0 = 0;
-   //double vdbc_val_2_1 = 5;
-   double pdbc_val = 55;
-   //double pdbc_val2 = 22;
-   //double vnbc_val = 0;
-   //double pnbc_val = 0;
+   // Setup
+   // we define the standard values for our boundaries, equation constants and the meshfile
+   double v_max = 28;               // max velocity for our boundary on the inlet
+   double pdbc_val = 100;           // value for pressure boundary
+   double kin_viscosity = 20000;    // value for kinematic visosity
+   const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";  //our standard test mesh
+   int ref_levels = 0;              // standard number of refinements for the mesh
+   bool visualization = 1;          // bool if visualization is wanted
+   mfem::Array<int> order(1);       // order for the finite element collections and spaces, velocity=order, pressure=order-1
+   order[0] = 3;                    // order for Pn, PnPn-1 finite element space is desired, higher order means higher order nurbs for the simulation
 
-   /*
-   auto lambda_up = [vdbc_val_2_0,vdbc_val_2_1] (const Vector &bdr_up)->std::vector<double>
-   {
-      std::vector<double> vec_up(3);
-      vec_up(0)=vdbc_val_2_0;
-      vec_up(1)=vdbc_val_2_1;
-      vec_up(2)=0.0;
-      std::cout << " x(0) = " << bdr_up(0) << " x(1) = " << bdr_up(1) << " x(2) = " << bdr_up(2) << std::endl;
-      return vec_up;
-   };
-   */
-
-   // 1. Parse command-line options.
-   //const char *mesh_file = "../../../MA/mesh/pipe-nurbs-boundary-test_2.mesh";
-   const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";
-
-   int ref_levels = 0;
-   bool visualization = 1;
-   Array<int> order(1);
-   order[0] = 3;
-
-   OptionsParser args(argc, argv);
+   // Parse command-line options.
+   // input options for our executable
+   mfem::OptionsParser args(argc, argv);
    args.AddOption(&mesh_file, "-m", "--mesh",
                   "Mesh file to use.");
    args.AddOption(&ref_levels, "-r", "--refine",
@@ -72,99 +54,105 @@ int main(int argc, char *argv[])
    }
    args.PrintOptions(std::cout);
 
-   // 2. Read the mesh from the given mesh file. We can handle nurbs meshes with
-   //    the code.
-   Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   int sdim = mesh->Dimension();
+   // Read the mesh from the given mesh file. 
+   mfem::Mesh *mesh = new mfem::Mesh(mesh_file, 1, 1);
+   int sdim = mesh->Dimension(); // get dimension in space from the mesh 1D, 2D, 3D
 
-   // 3. Refine the mesh to increase the resolution. In this example we do
-   //    'ref_levels' of uniform refinement. We choose 'ref_levels' to be the
-   //    largest number that gives a final mesh with no more than 50,000
-   //    elements.
+   // Refine the mesh to increase the resolution.
    //    higher ref_levels means more refinement and more resolution
    {
-      if (ref_levels < 0)
+      if (ref_levels < 0) // if ref_level parameter is smaller then 0, set a standard refinement
       {
          ref_levels =
             (int)floor(log(500./mesh->GetNE())/log(2.)/sdim);
       }
 
-      for (int l = 0; l < ref_levels; l++)
+      for (int l = 0; l < ref_levels; l++) // loop for refining of the mesh
       {
          mesh->UniformRefinement();
       }
       mesh->PrintInfo();
    }
-
-   // 4. Define a finite element space on the mesh. Here we use use an isogeometric space.
-
-   NURBSExtension *vNURBSext = NULL;
-   NURBSExtension *pNURBSext = NULL;
-   
+      
    std::cout << "Using Nurbs mesh." << std::endl;
    std::cout << "mesh Dimension " << sdim << std::endl;
    std::cout << "given Order " << order[0] << std::endl;
+   // collection of finite elements from the same family (H1,RT,L2, nurbs,...) in multiple dimensions,
+   // this is used to match the dof's of a finite element space between elements
+   // https://docs.mfem.org/html/fe__coll_8hpp_source.html
    // we need an NURBSFECollection for every different component in our PDE, e.g.: velocity, pressure, ...
-   FiniteElementCollection *vfec; // velocity
-   FiniteElementCollection *pfec; // pressure
-   vfec = new NURBSFECollection(order[0]);
-   pfec = new NURBSFECollection(order[0]-1);
-   std::cout << "velocity fec Order " << vfec->GetOrder() << std::endl;
-   std::cout << "pressure fec Order " << pfec->GetOrder() << std::endl;
+   mfem::FiniteElementCollection *vfec; // velocity
+   mfem::FiniteElementCollection *pfec; // pressure
+   vfec = new mfem::NURBSFECollection(order[0]); // Pn
+   pfec = new mfem::NURBSFECollection(order[0]-1); // Pn-1 , pressure has one order less than velocity, we want to make an Taylor-Hood element pair
+   std::cout << "velocity finite element collection Order " << vfec->GetOrder() << std::endl;
+   std::cout << "pressure finite element collection Order " << pfec->GetOrder() << std::endl;
 
-   int nkv = mesh->NURBSext->GetNKV();
-   if (order.Size() == 1)
+   /* left over from the nurbs miniapp, should be of no use here, delete later
+   int nkv = mesh->NURBSext->GetNKV(); // get number of knot vectors
+   if (order.Size() == 1)  //Size(): Return the logical size of the array. 
    {
       int tmp = order[0];
-      order.SetSize(nkv);
+      std::cout << "nkv " << nkv << std::endl;
+      order.SetSize(nkv); // Change the logical size of the array, keep existing entries. 
       order = tmp;
    }
+   if (order.Size() != nkv ) { mfem::mfem_error("Wrong number of orders set."); }
+   */
 
-   if (order.Size() != nkv ) { mfem_error("Wrong number of orders set."); }
-   vNURBSext = new NURBSExtension(mesh->NURBSext, order[0]);
-   pNURBSext = new NURBSExtension(mesh->NURBSext, order[0]-1);
+   // we want to use a nurbs mesh, so we need the nurbs extension from mfem
+   // for every physical field in our equations we need an extension, here we also declare the order for our nurbs
+   mfem::NURBSExtension *vNURBSext = NULL; // velocity
+   mfem::NURBSExtension *pNURBSext = NULL; // pressure
+   vNURBSext = new mfem::NURBSExtension(mesh->NURBSext, order[0]);
+   pNURBSext = new mfem::NURBSExtension(mesh->NURBSext, order[0]-1);
 
-   FiniteElementSpace *vfes = new FiniteElementSpace(mesh, vNURBSext, vfec, sdim);
-   FiniteElementSpace *pfes = new FiniteElementSpace(mesh, pNURBSext, pfec);
-   std::cout << "vfes Order " << vfes->GetMaxElementOrder() << std::endl;
-   std::cout << "pfes Order " << pfes->GetMaxElementOrder() << std::endl;
+   // declaration for our finite element spaces
+   // here the mesh, NURBSextension, finite element collection and the space dimensions are used to define our desired fe space
+   mfem::FiniteElementSpace *vfes = new mfem::FiniteElementSpace(mesh, vNURBSext, vfec, sdim); // velocity finite element space, with dimension sdim
+   mfem::FiniteElementSpace *pfes = new mfem::FiniteElementSpace(mesh, pNURBSext, pfec);  // pressure finite element space, with dimension 1 (scalar field)
+   std::cout << "vfes velocity finite element space Order " << vfes->GetMaxElementOrder() << std::endl;
+   std::cout << "pfes pressure finite element space Order " << pfes->GetMaxElementOrder() << std::endl;
    std::cout << "Number of finite element unknowns vfes: "
      << vfes->GetTrueVSize() << std::endl;
    std::cout << "Number of finite element unknowns pfes: "
      << pfes->GetTrueVSize() << std::endl;
    
-   
-   // 5. Determine the list of true (i.e. conforming) essential boundary dofs.
+   //    Determine the list of true (i.e. conforming) essential boundary dofs.
    //    The boundary conditions are defined by marking all
    //    the boundary attributes from the mesh as essential (Dirichlet) and
    //    converting them to a list of true dofs.
    
    // Dirichlet
-   Array<int> vdbc_bdr(mesh->bdr_attributes.Max());
-   Array<int> vdbc_bdr_up(mesh->bdr_attributes.Max());
-   Array<int> vdbc_bdr_down(mesh->bdr_attributes.Max());
-   Array<int> pdbc_bdr(mesh->bdr_attributes.Max());
-   std::cout << " bdr attributes " << mesh->bdr_attributes.Max() << std::endl;
+   mfem::Array<int> vdbc_bdr(mesh->bdr_attributes.Max()); // contains the whole boundary markers
+   mfem::Array<int> vdbc_bdr_noslip(mesh->bdr_attributes.Max()); // to select only the boundary markers for the no slip walls
+   mfem::Array<int> vdbc_bdr_inlet(mesh->bdr_attributes.Max());   // to select only the boundary markers for the inlet
+   mfem::Array<int> pdbc_bdr(mesh->bdr_attributes.Max()); // contains the whole boundary markers
+   std::cout << " bdr attributes " << mesh->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
    // Neumann
-   //Array<int> vnbc_bdr(mesh->bdr_attributes.Max());
-   //Array<int> pnbc_bdr(mesh->bdr_attributes.Max());
+   // not used here
    
-   // we assume that the boundary attribute 1,2 are dirchlet, we want to use either pressure or velocity or a mix
-   //vdbc_bdr = 0; vdbc_bdr[0] = 1; vdbc_bdr[2] = 1;
-   vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; 
-   vdbc_bdr_up = 0; vdbc_bdr_up[2] = 1; 
-   vdbc_bdr_down = 0; vdbc_bdr_down[0] = 1; 
+   // for poiseuille flow 
+   // mark all used boundary attributes for velocity
+   vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; vdbc_bdr[3] = 1;  
+   // the boundary attribute 0 and 2 is used for the noslip condition
+   vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; 
+   // the boundary attribute 3 is used for a constant velocity at the inlet
+   vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1; 
    
-   pdbc_bdr = 0; pdbc_bdr[1] = 0;
+   // mark all used boundary attributes for pressure
+   pdbc_bdr = 0; pdbc_bdr[1] = 1;
 
-   Array<int> vel_ess_tdof_list;
-   Array<int> pres_ess_tdof_list;
-   //vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list);
+   // get the true dofs of the boundaries
+   mfem::Array<int> vel_ess_tdof_list;
+   mfem::Array<int> pres_ess_tdof_list;
    vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list);
    pfes->GetEssentialTrueDofs(pdbc_bdr, pres_ess_tdof_list);   
 
-   // 7. Implement Blockoperators
-   Array<int> block_offsets(3); // number of variables + 1
+   // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
+   // we need Blockoperators to define the equation system
+   // Implement Blockoperators
+   mfem::Array<int> block_offsets(3); // number of variables + 1
    block_offsets[0] = 0;
    block_offsets[1] = vfes->GetVSize();
    block_offsets[2] = pfes->GetVSize();
@@ -176,7 +164,7 @@ int main(int argc, char *argv[])
    std::cout << "dim(v+p) = " << block_offsets.Last() << "\n";
    std::cout << "***********************************************************\n" << std::endl;
 
-   BlockVector x(block_offsets), rhs(block_offsets);
+   mfem::BlockVector x(block_offsets), rhs(block_offsets); // blockvector for gridfunctions and our rhs
    /*
       x = [ v ]      rhs = [ f ]
           [ p ]            [ g ]
@@ -187,98 +175,97 @@ int main(int argc, char *argv[])
    rhs = 0.0;
 
    // initial guess set to be exact solution
-   GridFunction v, p;
+   mfem::GridFunction v, p;
    v.MakeRef(vfes, x.GetBlock(0), 0);
    p.MakeRef(pfes, x.GetBlock(1), 0);
    
-   // Setup bilinear and linear forms
+   // available lambda functions for our wanted boundary conditions
 
-   // rhs of momentum equation
-   // LinearForm f(vfes);  
-   Vector vzero(sdim);
-   vzero = 0.;
-   VectorConstantCoefficient vcczero(vzero);
-
-   LinearForm *f(new LinearForm);
-   f->Update(vfes, rhs.GetBlock(0),0);   
-   f->AddDomainIntegrator(new VectorDomainLFIntegrator(vcczero));
-   f->Assemble();
-   
-   // rhs for continuity equation
-   ConstantCoefficient zero(0.0);
-   LinearForm *g(new LinearForm);
-   g->Update(pfes, rhs.GetBlock(1), 0);
-   g->AddDomainIntegrator(new DomainLFIntegrator(zero));
-   g->Assemble();
-   
-   // Momentum equation
-   // diffusion term
-   BilinearForm a(vfes);
-   a.AddDomainIntegrator(new VectorDiffusionIntegrator(sdim));
-   a.Assemble();
-   //a.Finalize();
-
-   // grad pressure term
-   MixedBilinearForm b(pfes,vfes); // (trial,test)
-   ConstantCoefficient minusOne(-1.0);
-   b.AddDomainIntegrator(new TransposeIntegrator(new VectorDivergenceIntegrator(minusOne))); 
-   b.Assemble();
-   //b.Finalize();
-
-   // continuity term
-   MixedBilinearForm c(vfes,pfes); // (trial,test)
-   ConstantCoefficient One(1.0);
-   c.AddDomainIntegrator(new VectorDivergenceIntegrator(One)); 
-   c.Assemble();
-   //c.Finalize();
-
-
-   //std::cout << " v = " << v << std::endl;
-
-   auto lambda_up = [&sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
-   {
-      VelocityValue[0] = 10;
-      VelocityValue[1] = 0;
-      
-      std::cout << " v(0) = " << QuadraturPointPosition(0) << " v(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;            
-      return;
-   };
-
-   auto lambda_down = [&sdim](const Vector &QuadraturPointPosition, Vector &VelocityValue) -> void
+   auto lambda_noslip = [](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
    {
       VelocityValue[0] = 0;
       VelocityValue[1] = 0;
-      
-      std::cout << " v(0) = " << QuadraturPointPosition(0) << " v(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;          
+      //std::cout << " v(0) = " << QuadraturPointPosition(0) << " v(1) = " << QuadraturPointPosition(1) << std::endl;
+      //std::cout << " x(0) = " << VelocityValue(0) << " x(1) = " << VelocityValue(1) << std::endl;      
       return;
    };
 
-   VectorFunctionCoefficient vfc_up(sdim, lambda_up);
-   VectorFunctionCoefficient vfc_down(sdim, lambda_down);
-   v.ProjectBdrCoefficient(vfc_up,vdbc_bdr_up);
-   v.ProjectBdrCoefficient(vfc_down,vdbc_bdr_down);
+   auto lambda_inlet = [&v_max](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
+   {
+      //double h=1;
+      //VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      VelocityValue[0] = v_max;
+      VelocityValue[1] = 0;
+      //std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      //std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
+      return;
+   };
+
+   // we need a function coefficient to use our lambda functions, vector function because its not a scalar function
+   mfem::VectorFunctionCoefficient vfc_noslip(sdim, lambda_noslip);
+   mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet);
+   v.ProjectBdrCoefficient(vfc_noslip,vdbc_bdr_noslip); // we project the coefficient to the desired boundary
+   v.ProjectBdrCoefficient(vfc_inlet,vdbc_bdr_inlet); // we project the coefficient to the desired boundary
    std::cout << " v = " << v << std::endl;
 
-   //ConstantCoefficient vdbcCoef(vdbc_val_2_1);
-   //v.ProjectCoefficient(vdbcCoef, vdbc_bdr);
-   //std::cout << " p = " << p << std::endl;
-   ConstantCoefficient pdbcCoef(pdbc_val);
-   p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr);
+   // we use a constant pressure at an boundary attribute
+   // !!! i need to overwork this to only set a pressure at an vertex
+   mfem::ConstantCoefficient pdbcCoef(pdbc_val);
+   p.ProjectBdrCoefficient(pdbcCoef, pdbc_bdr); // we project the coefficient to the desired boundary
    std::cout << " p = " << p << std::endl;
 
-   SparseMatrix A,B,C;
-   Vector V, F;
-   Vector P, G;
-   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO);
-   //a.EliminateVDofs(vel_ess_tdof_list, diag);
-   //a.Finalize();
-   //a.FormSystemMatrix(vel_ess_tdof_list, A);
-   //b.FormRectangularSystemMatrix(pres_ess_tdof_list, vel_ess_tdof_list, B);
-   a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F);
-   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, G);
-   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, F);
+   // Setup bilinear and linear forms
+
+   // rhs of momentum equation
+   // we don't have a source term in our equations, so we just make an zero source term
+   mfem::Vector vzero(sdim);
+   vzero = 0.;
+   mfem::VectorConstantCoefficient vcczero(vzero); // coefficient for source term
+
+   mfem::LinearForm *f(new mfem::LinearForm); // define linear form for rhs
+   f->Update(vfes, rhs.GetBlock(0),0);  // link to block vector and use the velocity finite element space
+   f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero)); // define integrator for source term -> zero in our case
+   f->Assemble(); // assemble the linear form (vector)
+   
+   // rhs for continuity equation
+   mfem::ConstantCoefficient zero(0.0); // zero source term
+   mfem::LinearForm *g(new mfem::LinearForm); // define linear form for rhs
+   g->Update(pfes, rhs.GetBlock(1), 0); // link to block vector and use the pressure finite element space
+   g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+   g->Assemble(); // assemble the linear form (vector)
+   
+   // Momentum equation
+   // diffusion term
+   mfem::BilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
+   a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+   a.Assemble(); // assemble the bilinear form (matrix)
+   //a.Finalize(); not needed, will be called on form linear system
+
+   // grad pressure term
+   // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
+   mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
+   mfem::ConstantCoefficient minusOne(-1.0); // -1 because of the sign in the equation
+   b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
+   b.Assemble(); // assemble the mixed bilinear form (matrix)
+   //b.Finalize(); not needed, will be called on form linear system
+
+   // continuity term
+   // define the mixed bilinear form results in n x m matrix, we use the pressure finite element space as test space and the velocity space as trial space
+   mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
+   mfem::ConstantCoefficient One(1.0); // +1 because of the sign in the equation
+   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One)); // mixed bilinear form (lambda*nabla . u_vector, v)
+   c.Assemble(); // assemble the mixed bilinear form (matrix)
+   //c.Finalize(); not needed, will be called on form linear system
+
+   // we need some SparseMatrix and Vector to form our linear system
+   mfem::SparseMatrix A,B,C;
+   mfem::Vector V, F;
+   mfem::Vector P, G;
+   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F); // form A
+   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, G); // form B
+   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, F); // form C
 
    // Setup stokes operator
    /*
@@ -287,94 +274,37 @@ int main(int argc, char *argv[])
    */
 
    // for this code f,g = 0
-   
-   BlockOperator stokesOp(block_offsets);
 
-   //SparseMatrix &A(a.SpMat());
-   //SparseMatrix &B(b.SpMat());
-   //B.EnsureMultTranspose();
-   //TransposeOperator Bt(&B);
-
-   //A.PrintInfo(std::cout);
-   //A.PrintMatlab(std::cout);
-   //B.PrintInfo(std::cout);
-   //B.PrintMatlab(std::cout);
+   mfem::BlockOperator stokesOp(block_offsets); // Block operator to build our System for the solver
 
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
-   //stokesOp.SetBlock(1,0,&Bt);
    stokesOp.SetBlock(1,0,&C);
 
+   // SOLVER
+   // setup solver
+   int maxIter(10); // maximal number of iterations
+   double rtol(1.e-10); // convergence criteria
+   double atol(1.e-10); // convergence criteria
 
-   /*
-   std::cout << " x.size = " << " 0 to " << x.BlockSize(0)-1 << std::endl; 
-   for (int i = 0; i < x.BlockSize(0); i++) {
-      std::cout << x(i) << std::endl;
-   }
-
-   std::cout << " x.size = " << x.BlockSize(0) << " to " << x.BlockSize(0)+x.BlockSize(1)-1 << std::endl; 
-   for (int i = x.BlockSize(0); i < x.BlockSize(0)+x.BlockSize(1); i++) {
-      std::cout << x(i) << std::endl;
-   }
-
-   int getArrayLength = vel_ess_tdof_list.Size();
-   std::cout << "sizeof(vel_ess_tdof_list) " << getArrayLength << std::endl;
-   for (int i = 0; i < getArrayLength; i++) {
-      std::cout << vel_ess_tdof_list[i] << std::endl;
-   }
-
-   getArrayLength = pres_ess_tdof_list.Size();
-   std::cout << "sizeof(pres_ess_tdof_list) " << getArrayLength << std::endl;
-   for (int i = 0; i < getArrayLength; i++) {
-      std::cout << pres_ess_tdof_list[i] << std::endl;
-   }
-   */
-
-   
-   // 9. SOLVER
-   // setup MINRES solver
-   int maxIter(100);
-   double rtol(1.e-10);
-   double atol(1.e-10);
-
-   StopWatch chrono;
+   mfem::StopWatch chrono; // stop watch to calc solve time
    chrono.Clear();
    chrono.Start();
    
-   /*
-   Solver *J_solver;
-   Solver *J_prec;
-   J_prec = new DSmoother(1);
-   MINRESSolver *J_minres = new MINRESSolver;
-   J_minres->SetRelTol(rtol);
-   J_minres->SetAbsTol(0.0);
-   J_minres->SetMaxIter(300);
-   J_minres->SetPrintLevel(-1);
-   J_minres->SetPreconditioner(*J_prec);
-   J_solver = J_minres;
-   
-   NewtonSolver solver;
-   solver.SetSolver(*J_solver);
+   // setup minres solver, should be enough for our linear system
+   // without preconditioning
+   mfem::MINRESSolver solver; 
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
    solver.SetPrintLevel(1);
-   */
-
-   
-   MINRESSolver solver;
-   solver.SetAbsTol(atol);
-   solver.SetRelTol(rtol);
-   solver.SetMaxIter(maxIter);
-   solver.SetOperator(stokesOp);
-   solver.SetPrintLevel(1);
-   
 
    // solve the system
    solver.Mult(rhs, x);
    chrono.Stop();
 
+   // check if solver converged
    if (solver.GetConverged())
    {
       std::cout << "MINRES converged in " << solver.GetNumIterations()
@@ -404,48 +334,22 @@ int main(int argc, char *argv[])
       p.Save(p_ofs);
    }
    
-   //std::cout << " v.sol = " << v << std::endl;
-   //std::cout << " p.sol = " << p << std::endl;
-   std::cout << " vfes = " << vfes->GetTrueVSize() << std::endl;
-   std::cout << " pfes = " << pfes->GetTrueVSize() << std::endl;
-
-   //F.Print(std::cout);
-   //std::cout << " RHS F= " << std::endl;
-   //rhs.GetBlock(0).Print(std::cout);
-   //std::cout << " RHS G= " << std::endl;
-   //rhs.GetBlock(1).Print(std::cout);
-
+   // stream solution to glvis
+   // doesn't work properly right now
    {
       char vishost[] = "localhost";
       int  visport   = 19916;
-      socketstream v_sock(vishost, visport);
+      mfem::socketstream v_sock(vishost, visport);
       v_sock.precision(8);
       v_sock << "solution\n" << mesh << v << "window_title 'Velocity'" << std::endl;
-      socketstream p_sock(vishost, visport);
+      mfem::socketstream p_sock(vishost, visport);
       p_sock.precision(8);
       p_sock << "solution\n" << mesh << p << "window_title 'Pressure'" << std::endl;
    }
 
-
-   // 15. Free the used memory.
-   /*delete a;
-   delete A;
-   delete b;
-   delete B;
-   delete vfes;
-   delete pfes;
-   delete mesh;
-   delete pres_ess_tdof_list;
-   delete vel_ess_tdof_list;*/
-   vel_ess_tdof_list = 0;
-   pres_ess_tdof_list = 0;
-
-
-   /*   
-   A.PrintInfo(std::cout);
-   A.PrintMatlab(std::cout);
-   B.PrintInfo(std::cout);
-   B.PrintMatlab(std::cout);
-   */
+   // print solution vectors
+   std::cout << "v " << v << "\n";
+   std::cout << "p " << v << "\n";
+   
    return 0;
 }

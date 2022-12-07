@@ -15,8 +15,8 @@ add_mfem_miniapp(
   LIBRARIES mfem)
 
 if (MFEM_ENABLE_TESTING)
-  add_test(NAME nurbs_stokes_per_ser
-    COMMAND $<TARGET_FILE:nurbs_stokes> -no-vis
-    -m ${PROJECT_SOURCE_DIR}/mesh/pipe-nurbs-boundary-test_2.mesh)
+#  add_test(NAME nurbs_stokes_per_ser
+#    COMMAND $<TARGET_FILE:nurbs_stokes> -no-vis
+#    -m ${PROJECT_SOURCE_DIR}/mesh/pipe-nurbs-boundary-test_2.mesh)
 endif()
 
