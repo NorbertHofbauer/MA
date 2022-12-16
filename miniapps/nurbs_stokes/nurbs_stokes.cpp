@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
    double p_val = 100;           // value for pressure boundary
    double kin_viscosity = 20000;    // value for kinematic visosity
    const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";  //our standard test mesh
-   int ref_levels = 1;              // standard number of refinements for the mesh
+   int ref_levels = 0;              // standard number of refinements for the mesh
    bool visualization = 1;          // bool if visualization is wanted
    mfem::Array<int> order(2);       // to store order from mesh and order elevation. the order for the finite element collections and spaces will be, velocity=order[0] + 1 + order[1], pressure=order[0] + order[1]
    order[0] = 0;                    // mesh order 
@@ -215,8 +215,8 @@ int main(int argc, char *argv[])
       //VelocityValue[0] = 0;
       //VelocityValue[1] = v_max;
       VelocityValue[1] = 0;
-      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
+      //std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      //std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
       return;
    };
 
@@ -344,7 +344,16 @@ int main(int argc, char *argv[])
    
    //std::cout << "p " << p << "\n";
    
+   // set all values which are too small zero
 
+   for (size_t i = 0; i < v.Size(); i++)
+   {
+      if (std::abs(v(i))<1.e-6)
+      {
+         v(i)=0;
+      }
+   }
+   
    // projecting our computed controll points onto our grid functions for our pde system
 
    //v.ProjectBdrCoefficient(vfc_noslip,vdbc_bdr_invert); // we project the coefficient to the desired boundary
