@@ -665,8 +665,8 @@ void MixedScalarVectorIntegrator::AssembleElementMatrix2(
    const FiniteElement &trial_fe, const FiniteElement &test_fe,
    ElementTransformation &Trans, DenseMatrix &elmat)
 {
-   MFEM_ASSERT(this->VerifyFiniteElementTypes(trial_fe, test_fe),
-               this->FiniteElementTypeFailureMessage());
+   //MFEM_ASSERT(this->VerifyFiniteElementTypes(trial_fe, test_fe),
+   //            this->FiniteElementTypeFailureMessage());
 
    MFEM_VERIFY(VQ, "MixedScalarVectorIntegrator: "
                "VectorCoefficient must be set");

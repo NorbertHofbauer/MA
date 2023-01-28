@@ -1,3 +1,4 @@
+
 //                          MFEM - NURBS Version
 //
 // equations can be viewed in overleaf
@@ -10,6 +11,7 @@
 //
 // TODO: - for building an MPI application we need to integrate the "Par" everywhere!
 
+#include "nurbs_stokes_weak_bc_test2.hpp" // header with custom shit
 
 #include "mfem.hpp" // include mfem project
 #include <fstream>  // fstream for input and output in textfiles
@@ -27,11 +29,12 @@ int main(int argc, char *argv[])
 {
    // Setup
    // we define the standard values for our boundaries, equation constants and the meshfile
-   double v_max = 28;               // max velocity for our boundary on the inlet
-   double p_val = 100;           // value for pressure boundary
+   double v_max = 400;               // max velocity for our boundary on the inlet
+   double p_val = 1;           // value for pressure boundary
    double kin_viscosity = 200;    // value for kinematic visosity
+   double c_he = 1;              // value for constant c/he for the nitsche ansatz, to imply weak boundaries
    const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";  //our standard test mesh
-   int ref_levels = 4;              // standard number of refinements for the mesh
+   int ref_levels = 3;              // standard number of refinements for the mesh
    bool visualization = 1;          // bool if visualization is wanted
    mfem::Array<int> order(2);       // to store order from mesh and order elevation. the order for the finite element collections and spaces will be, velocity=order[0] + 1 + order[1], pressure=order[0] + order[1]
    order[0] = 0;                    // mesh order will be set from given mesh
@@ -147,7 +150,7 @@ int main(int argc, char *argv[])
    vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1; 
    
    // mark all used boundary attributes for pressure
-   pdbc_bdr = 0; pdbc_bdr[1] = 1;
+   pdbc_bdr = 0; pdbc_bdr[1] = 0;
 
    // mark dummy
    vdummy_bdr = 0;
@@ -207,14 +210,14 @@ int main(int argc, char *argv[])
    };
    */
 
-   auto lambda_inlet = [&v_max](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
+   auto lambda_inlet = [&v_max, &c_he](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
    {
       double h=1;
-      VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      VelocityValue[0] = c_he*4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
       
       //VelocityValue[0] = 0;
       //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
-      VelocityValue[1] = 0;
+      VelocityValue[1] = c_he*0;
       //std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
       //std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
       return;
@@ -234,7 +237,7 @@ int main(int argc, char *argv[])
    mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet); // function for our desired boundary condition
    f->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
    mfem::Vector pv_outlet(sdim);
-   pv_outlet = p_val;
+   pv_outlet = c_he*p_val;
    mfem::VectorConstantCoefficient vcc_p_outlet(pv_outlet); // coefficient for source term
    f->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vcc_p_outlet),pdbc_bdr); // define integrator on desired boundary
    f->Assemble(); // assemble the linear form (vector)
@@ -251,46 +254,47 @@ int main(int argc, char *argv[])
    mfem::BilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
-   mfem::ConstantCoefficient One_bc(1); // coefficient
-   a.AddBoundaryIntegrator(new mfem::VectorMassIntegrator(One_bc),vdbc_bdr_inlet); // bilinear form (lambda*u_vector),(v_vector))
+   mfem::ConstantCoefficient cc_bc(c_he); // coefficient
+   a.AddBoundaryIntegrator(new mfem::VectorMassIntegrator(cc_bc),vdbc_bdr_inlet); // bilinear form (lambda*u_vector),(v_vector))
    a.Assemble(); // assemble the bilinear form (matrix)
-   a.Finalize(); 
+   //a.Finalize(); 
 
    // grad pressure term
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    mfem::ConstantCoefficient minusOne(-1.0); // -1 because of the sign in the equation
-   b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
+   //b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    //b.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),pdbc_bdr); // bilinear form (lambda*u_vector),(v_vector))
-   mfem::Vector vone(sdim);
-   vone = 1.;
-   mfem::VectorConstantCoefficient vccone(vone); // coefficient for source term
-   b.AddBoundaryIntegrator(new mfem::MixedVectorProductIntegrator(vccone),pdbc_bdr); // bilinear form (lambda*u_vector),(v_vector))
+   //b.AddBoundaryIntegrator(new MixedMassIntegrator(cc_bc),pdbc_bdr); // bilinear form (lambda*u_vector),(v_vector))
    b.Assemble(); // assemble the mixed bilinear form (matrix)
-   b.Finalize(); 
+   //b.Finalize(); 
 
    // continuity term
    // define the mixed bilinear form results in n x m matrix, we use the pressure finite element space as test space and the velocity space as trial space
    mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
    mfem::ConstantCoefficient One(1.0); // +1 because of the sign in the equation
-   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One)); // mixed bilinear form (lambda*nabla . u_vector, v)
+   //c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One)); // mixed bilinear form (lambda*nabla . u_vector, v)
+   //c.AddBoundaryIntegrator(new MixedMassIntegrator(cc_bc),vdbc_bdr_inlet);
    c.Assemble(); // assemble the mixed bilinear form (matrix)
-   c.Finalize(); 
+   //c.Finalize(); 
 
+
+   /*
    mfem::SparseMatrix &A(a.SpMat());
    mfem::SparseMatrix &B(b.SpMat());
    mfem::SparseMatrix &C(c.SpMat());
+   */
 
    // we need some SparseMatrix and Vector to form our linear system
-   /*
+   
    mfem::SparseMatrix A,B,C;
    mfem::Vector V, F;
    mfem::Vector P, G;
    a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F); // form A
-   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, G); // form B
-   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, F); // form C
-   */
+   b.FormRectangularLinearSystem(pres_ess_tdof_list_dummy, vel_ess_tdof_list, p, *f, B, P, G); // form B
+   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list_dummy, v, *g, C, V, F); // form C   
+
    // Setup stokes operator
    /*
       S = [ A    B ] [ u ] = [ f ]
@@ -304,16 +308,14 @@ int main(int argc, char *argv[])
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&C);
-
    
    mfem::StopWatch chrono; // stop watch to calc solve time
    chrono.Clear();
    chrono.Start();
    
-   
    // SOLVER
    // setup solver
-   double maxIter=10000; // maximal number of iterations
+   double maxIter=20000; // maximal number of iterations
    double rtol(1.e-10); // convergence criteria
    double atol(1.e-10); // convergence criteria
 

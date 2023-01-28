@@ -598,8 +598,8 @@ int main(int argc, char *argv[])
    stokesPrec.SetDiagonalBlock(2, &id_mat2);
 
    //Wrapper to ensure mean of pressure is zero after application of preconditioner
-   mfem::BlockOrthoSolver stokesPrec_wrap(block_offsets);
-   stokesPrec_wrap.SetSolver(stokesPrec);
+   //mfem::BlockOrthoSolver stokesPrec_wrap(block_offsets);
+   //stokesPrec_wrap.SetSolver(stokesPrec);
 
    // SOLVER
    // setup solver
@@ -614,7 +614,7 @@ int main(int argc, char *argv[])
    lsolver.SetAbsTol(latol);
    lsolver.SetRelTol(lrtol);
    lsolver.SetMaxIter(lmaxIter);
-   lsolver.SetPreconditioner(stokesPrec_wrap);
+   //lsolver.SetPreconditioner(stokesPrec_wrap);
    // operator
    lsolver.SetOperator(stokesOp);
    lsolver.SetPrintLevel(1);
