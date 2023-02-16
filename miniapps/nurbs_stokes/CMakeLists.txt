@@ -12,6 +12,8 @@
 add_mfem_miniapp(
   nurbs_stokes
   MAIN nurbs_stokes.cpp
+  nurbs_stokes_solver.cpp
+  nurbs_stokes_solver.hpp
   LIBRARIES mfem)
 
 if (MFEM_ENABLE_TESTING)
