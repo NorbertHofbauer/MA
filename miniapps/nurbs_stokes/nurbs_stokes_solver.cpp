@@ -82,33 +82,6 @@ bool NurbsStokesSolver::init()
       // init the dirichlet bc
       this->init_dirichletbc();
 
-      // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
-      // we need Blockoperators to define the equation system
-      // Implement Blockoperators
-      block_offsets = mfem::Array<int>(3); // number of variables + 1
-      block_offsets[0] = 0;
-      block_offsets[1] = vfes->GetVSize();
-      block_offsets[2] = pfes->GetVSize();
-      block_offsets.PartialSum();
-
-      std::cout << "***********************************************************\n";
-      std::cout << "dim(v) = " << block_offsets[1] - block_offsets[0] << "\n";
-      std::cout << "dim(p) = " << block_offsets[2] - block_offsets[1] << "\n";
-      std::cout << "dim(v+p) = " << block_offsets.Last() << "\n";
-      std::cout << "dim(t) = " << tfes->GetVSize() << "\n";
-      std::cout << "***********************************************************\n" << std::endl;
-
-      x_flow = mfem::BlockVector(block_offsets);
-      rhs_flow = mfem::BlockVector(block_offsets); // blockvector for gridfunctions and our rhs
-
-      x_flow = 0.0;
-      rhs_flow = 0.0;
-      //x_temperature = 0.0;
-      //rhs_temperature = 0.0;
-
-      // make reference to block vector
-      v.MakeRef(vfes, x_flow.GetBlock(0), 0);
-      p.MakeRef(pfes, x_flow.GetBlock(1), 0);
 
       is_initialized = true;  
       return true;
@@ -297,7 +270,7 @@ bool NurbsStokesSolver::set_dirichletbc_temperature_walls(std::vector<int> bound
    return true;
 }
 
-bool NurbsStokesSolver::calc_dirichletbc()
+bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0)
 {
    auto lambda_inlet = [this](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
    {
@@ -311,6 +284,8 @@ bool NurbsStokesSolver::calc_dirichletbc()
       //std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
       return;
    };
+
+   mfem::GridFunction v_bc(vfes),p_bc(pfes), t_bc(tfes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
@@ -347,7 +322,7 @@ bool NurbsStokesSolver::calc_dirichletbc()
    h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_walls),tdbc_bdr_walls); // define integrator on desired boundary
    h_bc->Assemble(); // assemble the linear form (vector)
    // define bilinear form add the boundary, means the nurbs add the boundary
-   mfem::BilinearForm d_bc(pfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::BilinearForm d_bc(tfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tdbc_bdr); // bilinear form (lambda*u_vector),(v_vector))
    d_bc.Assemble(); // assemble the bilinear form (matrix)
 
@@ -362,14 +337,12 @@ bool NurbsStokesSolver::calc_dirichletbc()
    d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d_bc.FormLinearSystem(temp_ess_tdof_list_dummy, t_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
    
-   //std::cout << " F_BC = " << std::endl;
-   //F_BC.Print(std::cout,1);
 
    // SOLVER
    // setup solver
    int maxIter(100); // maximal number of iterations
-   double rtol(1.e-10); // convergence criteria
-   double atol(1.e-10); // convergence criteria
+   double rtol(1.e-12); // convergence criteria
+   double atol(1.e-12); // convergence criteria
 
    // setup solver
    //1
@@ -413,6 +386,7 @@ bool NurbsStokesSolver::calc_dirichletbc()
       std::ofstream v_bc_ofs("sol_v_bc.gf");
       v_bc_ofs.precision(8);
       v_bc.Save(v_bc_ofs);
+      v0.Save(v_bc_ofs);
 
       //std::ofstream p_ofs("sol_p.gf");
       //p_ofs.precision(8);
@@ -450,6 +424,7 @@ bool NurbsStokesSolver::calc_dirichletbc()
       std::ofstream p_bc_ofs("sol_p_bc.gf");
       p_bc_ofs.precision(8);
       p_bc.Save(p_bc_ofs);
+      p0.Save(p_bc_ofs);
    }
 
 
@@ -482,6 +457,266 @@ bool NurbsStokesSolver::calc_dirichletbc()
       std::ofstream t_bc_ofs("sol_t_bc.gf");
       t_bc_ofs.precision(8);
       t_bc.Save(t_bc_ofs);
+      t0.Save(t_bc_ofs);
    }
+   return true;
+}
+
+bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t, mfem::SparseMatrix &A, mfem::SparseMatrix &B, mfem::SparseMatrix &C, mfem::BlockVector &rhs)
+{  
+   // Setup bilinear and linear forms
+
+   // rhs of momentum equation
+   // we don't have a source term in our equations, so we just make an zero source term
+   mfem::Vector vzero(sdim);
+   vzero = 0.;
+   mfem::VectorConstantCoefficient vcczero(vzero); // coefficient for source term
+
+   mfem::LinearForm *f(new mfem::LinearForm); // define linear form for rhs
+   f->Update(vfes, rhs.GetBlock(0),0);  // link to block vector and use the velocity finite element space
+   f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero)); // define integrator for source term -> zero in our case
+   f->Assemble(); // assemble the linear form (vector)
+   
+   // rhs for continuity equation
+   mfem::ConstantCoefficient zero(0.0); // zero source term
+   mfem::LinearForm *g(new mfem::LinearForm); // define linear form for rhs
+   g->Update(pfes, rhs.GetBlock(1), 0); // link to block vector and use the pressure finite element space
+   g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+   g->Assemble(); // assemble the linear form (vector)
+   
+   // Momentum equation
+   // diffusion term
+   mfem::BilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
+   a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+   a.Assemble(); // assemble the bilinear form (matrix)
+   //a.Finalize(); not needed, will be called on form linear system
+
+   // grad pressure term
+   // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
+   mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
+   mfem::ConstantCoefficient minusOne(-1.0); // -1 because of the sign in the equation
+   b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
+   b.Assemble(); // assemble the mixed bilinear form (matrix)
+   //b.Finalize(); not needed, will be called on form linear system
+
+   // continuity term
+   // define the mixed bilinear form results in n x m matrix, we use the pressure finite element space as test space and the velocity space as trial space
+   mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
+   mfem::ConstantCoefficient One(1.0); // +1 because of the sign in the equation
+   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One)); // mixed bilinear form (lambda*nabla . u_vector, v)
+   c.Assemble(); // assemble the mixed bilinear form (matrix)
+   //c.Finalize(); not needed, will be called on form linear system
+
+   // we need some SparseMatrix and Vector to form our linear system
+   // mfem::SparseMatrix A,B,C,D;
+   mfem::Vector V, F;
+   mfem::Vector P, G;
+   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F); // form A   
+   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, F); // form B
+   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, G); // form C
+     
+   return true;
+}
+
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &t, mfem::SparseMatrix &D, mfem::Vector &H)
+{
+   // Setup bilinear and linear forms
+  
+   // rhs for advection diffusion heat transfer
+   mfem::ConstantCoefficient zero(0.0); // zero source term
+   mfem::LinearForm *h(new mfem::LinearForm(tfes)); // define linear form for rhs
+   h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+   h->Assemble(); // assemble the linear form (vector)
+
+
+   // advection diffusion heat transfer
+   mfem::BilinearForm d(tfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const); // coefficient for the temp_diffusion_const
+   mfem::VectorGridFunctionCoefficient v_coef;
+   v_coef.SetGridFunction(&v);
+   //d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
+   d.AddDomainIntegrator(new mfem::ConvectionIntegrator(v_coef,1)); // 
+   //d.AddDomainIntegrator(new mfem::MixedDirectionalDerivativeIntegrator(v_coef)); // 
+   d.Assemble(); // assemble the bilinear form (matrix)
+   //a.Finalize(); not needed, will be called on form linear system
+
+   // we need some SparseMatrix and Vector to form our linear system
+   // mfem::SparseMatrix A,B,C,D;
+   //mfem::Vector T, H;
+   mfem::Vector T;
+   d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d.FormLinearSystem(temp_ess_tdof_list, t, *h, D, T, H); // form D
+     
+   return true;
+}
+
+bool NurbsStokesSolver::solve_flow(mfem::GridFunction v0,mfem::GridFunction p0, mfem::GridFunction t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t)
+{  
+   // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
+   // we need Blockoperators to define the equation system
+   // Implement Blockoperators
+   
+   
+   mfem::Array<int> block_offsets(3);  // number of variables + 1
+   block_offsets[0] = 0;
+   block_offsets[1] = vfes->GetVSize();
+   block_offsets[2] = pfes->GetVSize();
+   block_offsets.PartialSum();
+
+   std::cout << "***********************************************************\n";
+   std::cout << "dim(v) = " << block_offsets[1] - block_offsets[0] << "\n";
+   std::cout << "dim(p) = " << block_offsets[2] - block_offsets[1] << "\n";
+   std::cout << "dim(v+p) = " << block_offsets.Last() << "\n";
+   std::cout << "dim(t) = " << tfes->GetVSize() << "\n";
+   std::cout << "***********************************************************\n" << std::endl;
+
+   mfem::BlockVector x_flow(block_offsets), rhs_flow(block_offsets); // blockvector for gridfunctions and our rhs
+      /*
+         x_flow = [ v ]      rhs_flow =   [ f ]
+                  [ p ]                   [ g ]
+         
+         NO BLOCKVECTOR NEEDED ->   x_temperature = [ t ]  rhs_temperature = [ h ]
+         
+      */
+
+   x_flow = 0.0;
+   rhs_flow = 0.0;
+   //x_temperature = 0.0;
+   //rhs_temperature = 0.0;
+   
+   // make reference to block vector
+   v.MakeRef(vfes, x_flow.GetBlock(0), 0);
+   p.MakeRef(pfes, x_flow.GetBlock(1), 0);
+
+   mfem::SparseMatrix A,B,C;
+   calc_flowsystem_strongbc(v0, p0, t0, A, B, C, rhs_flow);
+
+   mfem::BlockOperator stokesOp(block_offsets); // Block operator to build our System for the solver
+
+   stokesOp.SetBlock(0,0,&A);
+   stokesOp.SetBlock(0,1,&B);
+   stokesOp.SetBlock(1,0,&C);
+
+   mfem::StopWatch chrono; // stop watch to calc solve time
+   chrono.Clear();
+   chrono.Start();
+   
+   // SOLVER
+   // setup solver
+   int maxIter=1000; // maximal number of iterations
+   double rtol(1.e-10); // convergence criteria
+   double atol(1.e-10); // convergence criteria
+
+   // setup minres solver, should be enough for our linear system
+   // without preconditioning
+   mfem::MINRESSolver solver; 
+   solver.SetAbsTol(atol);
+   solver.SetRelTol(rtol);
+   solver.SetMaxIter(maxIter);
+   solver.SetOperator(stokesOp);
+   solver.SetPrintLevel(1);
+   
+   // solve the system
+   std::cout << "SOLVE FLOWFIELD \n";
+   std::cout << rhs_flow.BlockSize(0)  <<"\n";
+   std::cout << rhs_flow.BlockSize(1)  <<"\n";
+   std::cout << x_flow.BlockSize(0)  <<"\n";
+   std::cout << x_flow.BlockSize(1)  <<"\n";
+   
+   solver.Mult(rhs_flow, x_flow);
+   chrono.Stop();
+
+   // check if solver converged
+   if (solver.GetConverged())
+   {
+      std::cout << "MINRES converged in " << solver.GetNumIterations()
+                << " iterations with a residual norm of "
+                << solver.GetFinalNorm() << ".\n";
+   }
+   else
+   {
+      std::cout << "MINRES did not converge in " << solver.GetNumIterations()
+                << " iterations. Residual norm is " << solver.GetFinalNorm()
+                << ".\n";
+   }
+   std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
+
+   // Save the mesh and the solution
+   {
+      std::ofstream mesh_ofs("Stokes.mesh");
+      mesh_ofs.precision(8);
+      mesh->Print(mesh_ofs);
+
+      std::ofstream v_ofs("sol_v.gf");
+      v_ofs.precision(8);
+      v.Save(v_ofs);
+
+      std::ofstream p_ofs("sol_p.gf");
+      p_ofs.precision(8);
+      p.Save(p_ofs);
+   }
+   
+   return true;
+}
+
+bool NurbsStokesSolver::solve_temperature(mfem::GridFunction v0, mfem::GridFunction t0,mfem::GridFunction &v, mfem::GridFunction &t)
+{
+   mfem::SparseMatrix D;
+   mfem::Vector H;
+   
+   calc_temperaturesystem_strongbc(v0, t0, D, H);
+
+   mfem::StopWatch chrono; // stop watch to calc solve time
+   chrono.Clear();
+   chrono.Start();
+   
+   // SOLVER
+   // setup solver
+   int maxIter=1000; // maximal number of iterations
+   double rtol(1.e-10); // convergence criteria
+   double atol(1.e-10); // convergence criteria
+
+   // setup minres solver, should be enough for our linear system
+   // without preconditioning
+   mfem::MINRESSolver solver; 
+   solver.SetAbsTol(atol);
+   solver.SetRelTol(rtol);
+   solver.SetMaxIter(maxIter);
+   solver.SetOperator(D);
+   solver.SetPrintLevel(1);
+
+   std::cout << "SOLVE TEMPERATUREFIELD \n";   
+   // solve the system
+   solver.Mult(H, t0);
+   chrono.Stop();
+
+   // check if solver converged
+   if (solver.GetConverged())
+   {
+      std::cout << "MINRES converged in " << solver.GetNumIterations()
+                << " iterations with a residual norm of "
+                << solver.GetFinalNorm() << ".\n";
+   }
+   else
+   {
+      std::cout << "MINRES did not converge in " << solver.GetNumIterations()
+                << " iterations. Residual norm is " << solver.GetFinalNorm()
+                << ".\n";
+   }
+   std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
+
+   // Save the mesh and the solution
+   {
+      std::ofstream mesh_ofs("Stokes.mesh");
+      mesh_ofs.precision(8);
+      mesh->Print(mesh_ofs);
+
+      std::ofstream t_ofs("sol_t.gf");
+      t_ofs.precision(8);
+      t.Save(t_ofs);
+   }
+   
    return true;
 }
