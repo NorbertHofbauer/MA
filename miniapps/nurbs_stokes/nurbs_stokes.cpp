@@ -54,15 +54,57 @@ int main(int argc, char *argv[])
    args.PrintOptions(std::cout);
 
    NurbsStokesSolver nssolver;
+   nssolver.v_max = 28;               // max velocity for our boundary on the inlet
+   nssolver.p_val = 100;           // value for pressure boundary
+   nssolver.kin_viscosity = 200;    // value for kinematic visosity
+   nssolver.temp_1 = 0;               // value for temperature
+   nssolver.temp_2 = 50;               // value for temperature
+   nssolver.temp_diffusion_const = 0.1; // value for temperature diffusion constant coefficient
+   nssolver.meshfile = "../../../MA/data/quad_nurbs.mesh";
+   nssolver.ref_levels = 3;
+   nssolver.set_order_elevation_velocity(0);
+   nssolver.set_order_elevation_pressure(0);
+   nssolver.set_order_elevation_temperature(0);
+   nssolver.maxIter = 10;
 
    nssolver.init();
 
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),t0(nssolver.tfes),v(nssolver.vfes),p(nssolver.pfes),t(nssolver.tfes);
 
    nssolver.calc_dirichletbc(v0,p0,t0);
+/*
+   std::cout << "v0\n";
+   std::cout << v0 << "\n";
+   std::cout << "p0\n";
+   std::cout << p0 << "\n";
+   std::cout << "t0\n";
+   std::cout << t0 << "\n";
+*/
+//   nssolver.solve_temperature(t0,v,t);
 
    nssolver.solve_flow(v0,p0,t0,v,p,t);
+   
+   v0 = v;
+   
    nssolver.solve_temperature(v0,t0,v,t);
+   
+   v = v0;
+   
+   /*
+   std::cout << "v0\n";
+   std::cout << v0 << "\n";
+   std::cout << "p0\n";
+   std::cout << p0 << "\n";
+   std::cout << "t0\n";
+   std::cout << t0 << "\n";
+   std::cout << "v\n";
+   std::cout << v << "\n";
+   std::cout << "p\n";
+   std::cout << p << "\n";
+   std::cout << "t\n";
+   std::cout << t << "\n";
+   */
+
    
    return 0;
 }

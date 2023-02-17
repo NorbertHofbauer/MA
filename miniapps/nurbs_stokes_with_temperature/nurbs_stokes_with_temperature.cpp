@@ -524,6 +524,8 @@ int main(int argc, char *argv[])
    d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d.FormLinearSystem(temp_ess_tdof_list, t, *h, D, T, H); // form D
    
+//   std::cout << t;
+
    /*
    a.FormSystemMatrix(vel_ess_tdof_list, A);
    b.FormRectangularSystemMatrix(pres_ess_tdof_list, vel_ess_tdof_list, B); // form B
@@ -603,7 +605,7 @@ int main(int argc, char *argv[])
 
    // SOLVER
    // setup solver
-   double lmaxIter=1000; // maximal number of iterations
+   double lmaxIter=1; // maximal number of iterations
    double lrtol(1.e-10); // convergence criteria
    double latol(1.e-10); // convergence criteria
 

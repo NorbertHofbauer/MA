@@ -69,15 +69,14 @@ public:
    mfem::Array<int> pres_ess_tdof_list_dummy;
    mfem::Array<int> temp_ess_tdof_list_dummy;
 
-   mfem::BilinearForm *d;
-   mfem::SparseMatrix *D;
-   mfem::OperatorHandle *D_OH;
-   mfem::Vector H;
-
-
    bool is_initialized = false;
-   bool bcstrong = false;
+   bool bcstrong = true;
    bool bcweak = false;
+   // SOLVER
+   int maxIter=10; // maximal number of iterations
+   double rtol = 1.e-10; // convergence criteria
+   double atol = 1.e-10; // convergence criteria
+   int solver_type = 1;    // type 1  MINRES
 
    bool init(); // initialize, set mesh properties and elevations before init
    bool update(); // update solver
@@ -100,11 +99,11 @@ public:
 
    bool calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0); // calculate our gridfunction on the dirchlet bc
    
-   bool calc_flowsystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t, mfem::SparseMatrix &A, mfem::SparseMatrix &B, mfem::SparseMatrix &C, mfem::BlockVector &rhs); // assemble our system matrices with strong boundary conditions
-   bool solve_flow(mfem::GridFunction v0, mfem::GridFunction p0, mfem::GridFunction t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t);
+   bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t); // assemble and compute our system matrices with strong boundary conditions
+   bool calc_temperaturesystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &t); // assemble and compute our system matrices with strong boundary conditions
 
-   bool calc_temperaturesystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &t, mfem::SparseMatrix *D); // assemble our system matrices with strong boundary conditions
-   bool solve_temperature(mfem::GridFunction v0, mfem::GridFunction t0, mfem::GridFunction &v, mfem::GridFunction &t);
+   bool solve_flow(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t);
+   bool solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &t);
 };
 
 #endif // NURBSSTOKESSOLVER_HPP
