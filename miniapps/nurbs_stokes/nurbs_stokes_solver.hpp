@@ -69,6 +69,12 @@ public:
    mfem::Array<int> pres_ess_tdof_list_dummy;
    mfem::Array<int> temp_ess_tdof_list_dummy;
 
+   mfem::BilinearForm *d;
+   mfem::SparseMatrix *D;
+   mfem::OperatorHandle *D_OH;
+   mfem::Vector H;
+
+
    bool is_initialized = false;
    bool bcstrong = false;
    bool bcweak = false;
@@ -93,10 +99,11 @@ public:
    bool set_dirichletbc_temperature_walls(std::vector<int> boundary_marker); //sets the dirichlet boundary in the temperature field for the walls
 
    bool calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0); // calculate our gridfunction on the dirchlet bc
-   bool calc_flowsystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t, mfem::SparseMatrix &A, mfem::SparseMatrix &B, mfem::SparseMatrix &C, mfem::BlockVector &rhs); // assemble our system matrices with strong boundary conditions
-   bool calc_temperaturesystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &t, mfem::SparseMatrix &D, mfem::Vector &H); // assemble our system matrices with strong boundary conditions
    
+   bool calc_flowsystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t, mfem::SparseMatrix &A, mfem::SparseMatrix &B, mfem::SparseMatrix &C, mfem::BlockVector &rhs); // assemble our system matrices with strong boundary conditions
    bool solve_flow(mfem::GridFunction v0, mfem::GridFunction p0, mfem::GridFunction t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t);
+
+   bool calc_temperaturesystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &t, mfem::SparseMatrix *D); // assemble our system matrices with strong boundary conditions
    bool solve_temperature(mfem::GridFunction v0, mfem::GridFunction t0, mfem::GridFunction &v, mfem::GridFunction &t);
 };
 

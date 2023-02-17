@@ -625,9 +625,9 @@ int main(int argc, char *argv[])
    //solver_wrap.SetSolver(lsolver);
    //solver_wrap.Mult(rhs, x);
    
-   //lsolver.Mult(rhs, x);
+   lsolver.Mult(rhs, x);
       
-   for (size_t i = 0; i < 5; i++)
+   /*for (size_t i = 0; i < 5; i++)
    {
       //H.Print(std::cout,1);
       lsolver.SetPrintLevel(0);
@@ -648,7 +648,8 @@ int main(int argc, char *argv[])
       //std::cout << "t " << t << "\n";
       t=t_copy;
       std::cout << "******** t " << t << "\n";
-   }
+   }*/
+
    chrono.Stop();
 
    // check if solver converged

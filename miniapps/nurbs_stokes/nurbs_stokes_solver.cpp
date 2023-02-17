@@ -509,46 +509,14 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v, mfem::Gr
    //c.Finalize(); not needed, will be called on form linear system
 
    // we need some SparseMatrix and Vector to form our linear system
-   // mfem::SparseMatrix A,B,C,D;
+   //mfem::SparseMatrix A,B,C;
    mfem::Vector V, F;
    mfem::Vector P, G;
    a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    a.FormLinearSystem(vel_ess_tdof_list, v, *f, A, V, F); // form A   
    b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p, *f, B, P, F); // form B
    c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v, *g, C, V, G); // form C
-     
-   return true;
-}
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &t, mfem::SparseMatrix &D, mfem::Vector &H)
-{
-   // Setup bilinear and linear forms
-  
-   // rhs for advection diffusion heat transfer
-   mfem::ConstantCoefficient zero(0.0); // zero source term
-   mfem::LinearForm *h(new mfem::LinearForm(tfes)); // define linear form for rhs
-   h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
-   h->Assemble(); // assemble the linear form (vector)
-
-
-   // advection diffusion heat transfer
-   mfem::BilinearForm d(tfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
-   mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const); // coefficient for the temp_diffusion_const
-   mfem::VectorGridFunctionCoefficient v_coef;
-   v_coef.SetGridFunction(&v);
-   //d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
-   d.AddDomainIntegrator(new mfem::ConvectionIntegrator(v_coef,1)); // 
-   //d.AddDomainIntegrator(new mfem::MixedDirectionalDerivativeIntegrator(v_coef)); // 
-   d.Assemble(); // assemble the bilinear form (matrix)
-   //a.Finalize(); not needed, will be called on form linear system
-
-   // we need some SparseMatrix and Vector to form our linear system
-   // mfem::SparseMatrix A,B,C,D;
-   //mfem::Vector T, H;
-   mfem::Vector T;
-   d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d.FormLinearSystem(temp_ess_tdof_list, t, *h, D, T, H); // form D
-     
    return true;
 }
 
@@ -587,11 +555,31 @@ bool NurbsStokesSolver::solve_flow(mfem::GridFunction v0,mfem::GridFunction p0, 
    //rhs_temperature = 0.0;
    
    // make reference to block vector
-   v.MakeRef(vfes, x_flow.GetBlock(0), 0);
-   p.MakeRef(pfes, x_flow.GetBlock(1), 0);
+   v0.MakeRef(vfes, x_flow.GetBlock(0), 0);
+   p0.MakeRef(pfes, x_flow.GetBlock(1), 0);
 
    mfem::SparseMatrix A,B,C;
+   
+   //A.PrintInfo(std::cout);
+   //A.PrintMatlab(std::cout);
+   //B.PrintInfo(std::cout);
+   //B.PrintMatlab(std::cout);
+   //C.PrintInfo(std::cout);
+   //B.PrintMatlab(std::cout);
+
    calc_flowsystem_strongbc(v0, p0, t0, A, B, C, rhs_flow);
+
+   /*
+   std::cout << " x.size = " << " 0 to " << x.BlockSize(0)-1 << std::endl; 
+   for (int i = 0; i < x.BlockSize(0); i++) {
+      std::cout << x(i) << std::endl;
+   }*/
+   //std::cout << " RHS F= " << std::endl;
+   //rhs_flow.GetBlock(0).Print(std::cout);
+   //rhs_flow.GetBlock(1).Print(std::cout);
+   //x_flow.GetBlock(0).Print(std::cout);
+   //x_flow.GetBlock(1).Print(std::cout);
+   
 
    mfem::BlockOperator stokesOp(block_offsets); // Block operator to build our System for the solver
 
@@ -625,7 +613,7 @@ bool NurbsStokesSolver::solve_flow(mfem::GridFunction v0,mfem::GridFunction p0, 
    std::cout << x_flow.BlockSize(0)  <<"\n";
    std::cout << x_flow.BlockSize(1)  <<"\n";
    
-   solver.Mult(rhs_flow, x_flow);
+   //solver.Mult(rhs_flow, x_flow);
    chrono.Stop();
 
    // check if solver converged
@@ -661,13 +649,60 @@ bool NurbsStokesSolver::solve_flow(mfem::GridFunction v0,mfem::GridFunction p0, 
    return true;
 }
 
-bool NurbsStokesSolver::solve_temperature(mfem::GridFunction v0, mfem::GridFunction t0,mfem::GridFunction &v, mfem::GridFunction &t)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v, mfem::GridFunction &t, mfem::SparseMatrix *D)
 {
-   mfem::SparseMatrix D;
-   mfem::Vector H;
-   
-   calc_temperaturesystem_strongbc(v0, t0, D, H);
+   // Setup bilinear and linear forms
+  
+   // rhs for advection diffusion heat transfer
+   mfem::ConstantCoefficient zero(0.0); // zero source term
+   mfem::LinearForm *h(new mfem::LinearForm(tfes)); // define linear form for rhs
+   h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+   h->Assemble(); // assemble the linear form (vector)
 
+   // advection diffusion heat transfer
+   //mfem::BilinearForm d(tfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   d = new mfem::BilinearForm(tfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const); // coefficient for the temp_diffusion_const
+   mfem::VectorGridFunctionCoefficient v_coef;
+   v_coef.SetGridFunction(&v);
+   d->AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
+   d->AddDomainIntegrator(new mfem::ConvectionIntegrator(v_coef,1)); // 
+   //d.AddDomainIntegrator(new mfem::MixedDirectionalDerivativeIntegrator(v_coef)); // 
+   d->Assemble(); // assemble the bilinear form (matrix)
+   //a.Finalize(); not needed, will be called on form linear system
+
+   // we need some SparseMatrix and Vector to form our linear system
+   //mfem::Vector T, H;
+   mfem::OperatorHandle *D_OH;
+   //mfem::Vector H;
+   mfem::Vector T;
+   d->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d->FormLinearSystem(temp_ess_tdof_list, t, *h, *D_OH, T, H); // form D
+   
+   //D.PrintInfo(std::cout);
+   //D.PrintMatlab(std::cout);
+   //H.Print(std::cout);
+
+   return true;
+}
+
+
+
+bool NurbsStokesSolver::solve_temperature(mfem::GridFunction v0, mfem::GridFunction t0, mfem::GridFunction &v, mfem::GridFunction &t)
+{
+   D = new mfem::SparseMatrix();
+   //mfem::Vector H;
+
+   //D.PrintInfo(std::cout);
+   //D.PrintMatlab(std::cout);
+
+   calc_temperaturesystem_strongbc(v0, t0, D);
+   
+   //H.Print(std::cout);
+   
+   //D.PrintInfo(std::cout);
+   //D.PrintMatlab(std::cout);
+   
    mfem::StopWatch chrono; // stop watch to calc solve time
    chrono.Clear();
    chrono.Start();
@@ -684,7 +719,7 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction v0, mfem::GridFunct
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
-   solver.SetOperator(D);
+   solver.SetOperator(D_OH->operator*());
    solver.SetPrintLevel(1);
 
    std::cout << "SOLVE TEMPERATUREFIELD \n";   
