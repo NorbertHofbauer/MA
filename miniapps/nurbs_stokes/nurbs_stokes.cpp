@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
    args.PrintOptions(std::cout);
 
    NurbsStokesSolver nssolver;
-   nssolver.v_max = 28;               // max velocity for our boundary on the inlet
+   nssolver.v_max = 1.2;               // max velocity for our boundary on the inlet
    nssolver.p_val = 100;           // value for pressure boundary
    nssolver.kin_viscosity = 200;    // value for kinematic visosity
    nssolver.temp_1 = 0;               // value for temperature
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
    nssolver.set_order_elevation_velocity(0);
    nssolver.set_order_elevation_pressure(0);
    nssolver.set_order_elevation_temperature(0);
-   nssolver.maxIter = 10;
+   nssolver.maxIter = 100;
 
    nssolver.init();
 
@@ -105,6 +105,5 @@ int main(int argc, char *argv[])
    std::cout << t << "\n";
    */
 
-   
    return 0;
 }

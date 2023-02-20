@@ -302,8 +302,7 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    {
       double h=1;
       VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
-      
-      //VelocityValue[0] = 0;
+      //VelocityValue[0] = v_max;
       //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
       VelocityValue[1] = 0;
       //std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
@@ -374,11 +373,12 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    //1
    //mfem::MINRESSolver solver;
    //2
-   mfem::CGSolver bc_solver;
-   mfem::Solver *bc_prec;
-   bc_prec = new mfem::GSSmoother();
-   bc_solver.SetPreconditioner(*bc_prec);
-
+   //mfem::CGSolver bc_solver;
+   //mfem::Solver *bc_prec;
+   //bc_prec = new mfem::GSSmoother();
+   //bc_solver.SetPreconditioner(*bc_prec);
+   mfem::GMRESSolver bc_solver;
+   
    bc_solver.SetAbsTol(atol);
    bc_solver.SetRelTol(rtol);
    bc_solver.SetMaxIter(maxIter);
@@ -494,7 +494,6 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
 
 bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t)
 {  
-
    // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
    // we need Blockoperators to define the equation system
    // Implement Blockoperators
@@ -601,7 +600,9 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // setup minres solver, should be enough for our linear system
    // without preconditioning
-   mfem::MINRESSolver solver; 
+   //mfem::MINRESSolver solver; 
+   mfem::GMRESSolver solver;
+   //solver.iterative_mode = false;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
@@ -656,7 +657,20 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
 {
    // Setup bilinear and linear forms
    t = t0;
-
+/*
+   auto lambda_velocityfield = [this](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
+   {
+      double h=1;
+      VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      
+      VelocityValue[0] = 0;
+      //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      VelocityValue[1] = 0;
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
+      return;
+   };
+*/
    // rhs for advection diffusion heat transfer
    mfem::ConstantCoefficient zero(0.0); // zero source term
    mfem::LinearForm *h(new mfem::LinearForm(tfes)); // define linear form for rhs
@@ -668,6 +682,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
    mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const); // coefficient for the temp_diffusion_const
    mfem::VectorGridFunctionCoefficient v_coef;
    v_coef.SetGridFunction(&v0);
+   //mfem::VectorFunctionCoefficient v_coef(sdim, lambda_velocityfield);
    d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
    d.AddDomainIntegrator(new mfem::ConvectionIntegrator(v_coef,1)); // 
    //d.AddDomainIntegrator(new mfem::MixedDirectionalDerivativeIntegrator(v_coef)); // 
@@ -696,7 +711,10 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
 
    // setup minres solver, should be enough for our linear system
    // without preconditioning
-   mfem::MINRESSolver solver; 
+   mfem::GMRESSolver solver;
+   //solver.iterative_mode = false;
+   
+   //mfem::MINRESSolver solver;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
