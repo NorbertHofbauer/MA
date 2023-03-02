@@ -165,7 +165,7 @@ bool NurbsStokesSolver::init_dirichletbc()
    // NEED TO BE CHANGED!!!!
    // BOUNDARY SETTINGS SHOULD WORK WITH AN CLASS THAT CAN BE DELIVERED
 
-      // for poiseuille flow 
+   // for poiseuille flow 
    // mark all used boundary attributes for velocity
    vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; vdbc_bdr[3] = 1;
 
@@ -175,7 +175,7 @@ bool NurbsStokesSolver::init_dirichletbc()
    vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1; 
    
    // mark all used boundary attributes for pressure
-   pdbc_bdr = 0; pdbc_bdr[1] = 0;
+   pdbc_bdr = 0; pdbc_bdr[3] = 0;
 
    // temperature
    // mark all used boundary attributes for temperature
@@ -310,6 +310,18 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
       return;
    };
 
+   auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition, double &VelocityValue) -> void
+   {
+      double h=1;
+      VelocityValue = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      //VelocityValue[0] = v_max;
+      //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      //VelocityValue[1] = 0;
+      //std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      //std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
+      return;
+   };
+
    mfem::GridFunction v_bc(vfes),p_bc(pfes), t_bc(tfes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
@@ -318,8 +330,10 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    // VELOCITY
    // define rhs with the desired boundary condition values
    mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet); // function for our desired boundary condition
+   //mfem::FunctionCoefficient vfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *f_bc(new mfem::LinearForm(vfes)); // define linear form for rhs
    f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
+   //f_bc->AddBoundaryIntegrator(new mfem::BoundaryNormalLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
    f_bc->Assemble(); // assemble the linear form (vector)
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm a_bc(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
@@ -483,6 +497,20 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
       t_bc_ofs.precision(8);
       t_bc.Save(t_bc_ofs);
       t0.Save(t_bc_ofs);
+   }
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19916;
+      mfem::socketstream sol_sock1(vishost, visport);
+      sol_sock1.precision(8);
+      sol_sock1 << "solution\n" << *mesh << v_bc << std::flush;
+      mfem::socketstream sol_sock2(vishost, visport);
+      sol_sock2.precision(8);
+      sol_sock2 << "solution\n" << *mesh << p_bc << std::flush;
+      mfem::socketstream sol_sock3(vishost, visport);
+      sol_sock3.precision(8);
+      sol_sock3 << "solution\n" << *mesh << t_bc << std::flush;
    }
 
    v0=v_bc;
@@ -648,7 +676,17 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
       p_ofs.precision(8);
       p.Save(p_ofs);
    }
-
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19916;
+      mfem::socketstream sol_sock1(vishost, visport);
+      sol_sock1.precision(8);
+      sol_sock1 << "solution\n" << *mesh << v << std::flush;
+      mfem::socketstream sol_sock2(vishost, visport);
+      sol_sock2.precision(8);
+      sol_sock2 << "solution\n" << *mesh << p << std::flush;
+   }
 
    return true;
 }
@@ -751,6 +789,14 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
       std::ofstream t_ofs("sol_t.gf");
       t_ofs.precision(8);
       t.Save(t_ofs);
+   }
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19916;
+      mfem::socketstream sol_sock(vishost, visport);
+      sol_sock.precision(8);
+      sol_sock << "solution\n" << *mesh << t << std::flush;
    }
 
    return true;

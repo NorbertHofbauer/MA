@@ -19,6 +19,9 @@ class NurbsStokesSolver
 public:
    NurbsStokesSolver();
    ~NurbsStokesSolver();
+   
+   //visualization
+   bool visualization = 0;
 
    // parameters
    double v_max;               // max velocity for our boundary on the inlet
@@ -26,7 +29,7 @@ public:
    double kin_viscosity;    // value for kinematic visosity
    double temp_1;               // value for temperature
    double temp_2;               // value for temperature
-   double temp_diffusion_const; // value for temperature diffusion constant coefficient   
+   double temp_diffusion_const; // value for temperature diffusion constant coefficient
 
    const char *meshfile; // path to meshfile
    mfem::Mesh *mesh;  // mfem mesh object

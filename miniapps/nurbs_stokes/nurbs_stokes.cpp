@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
    args.PrintOptions(std::cout);
 
    NurbsStokesSolver nssolver;
-   nssolver.v_max = 1.2;               // max velocity for our boundary on the inlet
+   nssolver.v_max = 12;               // max velocity for our boundary on the inlet
    nssolver.p_val = 100;           // value for pressure boundary
    nssolver.kin_viscosity = 200;    // value for kinematic visosity
    nssolver.temp_1 = 0;               // value for temperature
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
    nssolver.init();
 
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),t0(nssolver.tfes),v(nssolver.vfes),p(nssolver.pfes),t(nssolver.tfes);
-
+   nssolver.visualization = 1;
    nssolver.calc_dirichletbc(v0,p0,t0);
 /*
    std::cout << "v0\n";
@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
    std::cout << t0 << "\n";
 */
 //   nssolver.solve_temperature(t0,v,t);
+   nssolver.visualization = 1;
 
    nssolver.solve_flow(v0,p0,t0,v,p,t);
    
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
    nssolver.solve_temperature(v0,t0,v,t);
    
    v = v0;
-   
+
    /*
    std::cout << "v0\n";
    std::cout << v0 << "\n";
@@ -104,6 +105,8 @@ int main(int argc, char *argv[])
    std::cout << "t\n";
    std::cout << t << "\n";
    */
+
+   std::cout << "NURBS STOKES END\n";
 
    return 0;
 }
