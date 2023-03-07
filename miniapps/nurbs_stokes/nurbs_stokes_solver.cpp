@@ -5,6 +5,34 @@
 #include <algorithm> // to get access to math functions
 #include <cmath>     // to get access to math functions
 
+
+double ViscosityModelCoefficient::Eval(mfem::ElementTransformation &T,
+                               const mfem::IntegrationPoint &ip)
+{
+   MFEM_ASSERT(u != NULL, "velocity field is not set");
+
+   //double L = lambda.Eval(T, ip);
+   //double M = mu.Eval(T, ip);
+   double shearrate = 0;
+   u->GetVectorGradient(T, grad);
+   for (size_t n = 0; n < grad.Size(); n++)
+   {
+      for (size_t m = 0; m < grad.Size(); m++)
+      {
+         if (n==m)
+         {
+            shearrate = shearrate + 2*grad(n,m)*grad(n,m);
+         }else
+         {
+            shearrate = shearrate + 0.5*(grad(n,m)+grad(n,m))*(grad(n,m)+grad(n,m));
+         }
+         //std::cout << "shearrate " << shearrate << " n " << n << " m " << m << "\n";
+      }
+   }
+   shearrate = std::sqrt(shearrate);
+   return shearrate;
+}
+
 NurbsStokesSolver::NurbsStokesSolver()
 {
    v_max = 28;               // max velocity for our boundary on the inlet
@@ -124,6 +152,7 @@ bool NurbsStokesSolver::init_dirichletbc()
    vdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
    vdbc_bdr_noslip = mfem::Array<int>(mesh->bdr_attributes.Max()); // to select only the boundary markers for the no slip walls
    vdbc_bdr_inlet = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the boundary markers for the inlet
+   vdbc_bdr_outlet = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the boundary markers for the outlet
    pdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
    tdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
    tdbc_bdr_inlet = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the boundary markers for the inlet
@@ -138,7 +167,9 @@ bool NurbsStokesSolver::init_dirichletbc()
    vdbc_bdr_noslip = 0;
    // the boundary at the inlet
    vdbc_bdr_inlet = 0;
-   
+   // the boundary at the outlet
+   vdbc_bdr_outlet = 0;
+
    // pressure
    pdbc_bdr = 0;
 
@@ -155,6 +186,7 @@ bool NurbsStokesSolver::init_dirichletbc()
 
    // get the true dofs of the boundaries
    vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list);
+   vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list_outlet);
    pfes->GetEssentialTrueDofs(pdbc_bdr, pres_ess_tdof_list);   
    tfes->GetEssentialTrueDofs(tdbc_bdr, temp_ess_tdof_list);   
 
@@ -172,10 +204,12 @@ bool NurbsStokesSolver::init_dirichletbc()
    // the boundary attribute 0 and 2 is used for the noslip condition
    // vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; //not needed if already above marked 
    // the boundary attribute 3 is used for a constant velocity at the inlet
-   vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1; 
+   vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1;
+   
+   vdbc_bdr_outlet = 0; vdbc_bdr_outlet[1] = 1; 
    
    // mark all used boundary attributes for pressure
-   pdbc_bdr = 0; pdbc_bdr[3] = 0;
+   pdbc_bdr = 0; pdbc_bdr[1] = 1;
 
    // temperature
    // mark all used boundary attributes for temperature
@@ -185,6 +219,7 @@ bool NurbsStokesSolver::init_dirichletbc()
 
    // get the true dofs of the boundaries
    vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list);
+   vfes->GetEssentialTrueDofs(vdbc_bdr_outlet, vel_ess_tdof_list_outlet);
    pfes->GetEssentialTrueDofs(pdbc_bdr, pres_ess_tdof_list);   
    tfes->GetEssentialTrueDofs(tdbc_bdr, temp_ess_tdof_list); 
 
@@ -566,10 +601,14 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    mfem::Vector vzero(sdim);
    vzero = 0.;
    mfem::VectorConstantCoefficient vcczero(vzero); // coefficient for source term
-
+   mfem::Vector vpressure(sdim);
+   vpressure = p_val;
+   mfem::VectorConstantCoefficient vccpressure(vpressure); // coefficient for source term
+   
    mfem::LinearForm *f(new mfem::LinearForm); // define linear form for rhs
    f->Update(vfes, rhs_flow.GetBlock(0),0);  // link to block vector and use the velocity finite element space
-   f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero)); // define integrator for source term -> zero in our case
+   f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
+   f->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vccpressure), vdbc_bdr_outlet);
    f->Assemble(); // assemble the linear form (vector)
    
    // rhs for continuity equation
@@ -586,7 +625,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
    a.Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
-
+0
    // grad pressure term
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
@@ -610,8 +649,8 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    mfem::Vector P, G;
    a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    a.FormLinearSystem(vel_ess_tdof_list, v0, *f, A, V, F); // form A   
-   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p0, *f, B, P, F); // form B
-   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v0, *g, C, V, G); // form C
+   b.FormRectangularLinearSystem(pres_ess_tdof_list_dummy, vel_ess_tdof_list, p0, *f, B, P, F); // form B
+   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list_dummy, v0, *g, C, V, G); // form C
 
    mfem::BlockOperator stokesOp(block_offsets); // Block operator to build our System for the solver
 
@@ -799,6 +838,46 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
       sol_sock << "solution\n" << *mesh << t << std::flush;
    }
 
+   // SHEARRATE COMPUTATION FOR CHECKING
+   mfem::GridFunction shearrate(tfes);
+   shearrate = 0;
+   ViscosityModelCoefficient vmc;
+   vmc.SetVelocity(v0);
+
+   mfem::LinearForm *rhs(new mfem::LinearForm(tfes)); // define linear form for rhs
+   rhs->AddDomainIntegrator(new mfem::DomainLFIntegrator(vmc));
+   rhs->Assemble(); // assemble the linear form (vector)
+   mfem::BilinearForm a(tfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
+   a.AddDomainIntegrator(new mfem::MassIntegrator(One_bc)); // bilinear form (lambda*u_vector),(v_vector))
+   a.Assemble(); // assemble the bilinear form (matrix)
+   
+   mfem::SparseMatrix A;
+   mfem::Vector SHEARRATE, RHS;
+   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   a.FormLinearSystem(temp_ess_tdof_list_dummy, shearrate, *rhs, A, SHEARRATE, RHS); // form D_BC
+
+   solver.SetOperator(A);
+   std::cout << "SOLVE SHEARRATE \n";   
+   // solve the system
+   solver.Mult(RHS, shearrate);
+   {
+      std::ofstream mesh_ofs("Stokes.mesh");
+      mesh_ofs.precision(8);
+      mesh->Print(mesh_ofs);
+
+      std::ofstream shearrate_ofs("sol_shearrate.gf");
+      shearrate_ofs.precision(8);
+      shearrate.Save(shearrate_ofs);
+   }
+   //if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19916;
+      mfem::socketstream sol_sock(vishost, visport);
+      sol_sock.precision(8);
+      sol_sock << "solution\n" << *mesh << shearrate << std::flush;
+   }
    return true;
 }
 
@@ -830,3 +909,4 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
 
    return true;
 }
+;

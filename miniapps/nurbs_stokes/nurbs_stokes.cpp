@@ -65,12 +65,12 @@ int main(int argc, char *argv[])
    nssolver.set_order_elevation_velocity(0);
    nssolver.set_order_elevation_pressure(0);
    nssolver.set_order_elevation_temperature(0);
-   nssolver.maxIter = 100;
+   nssolver.maxIter = 1000;
 
    nssolver.init();
 
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),t0(nssolver.tfes),v(nssolver.vfes),p(nssolver.pfes),t(nssolver.tfes);
-   nssolver.visualization = 1;
+   //nssolver.visualization = 1;
    nssolver.calc_dirichletbc(v0,p0,t0);
 /*
    std::cout << "v0\n";

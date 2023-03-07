@@ -14,6 +14,23 @@
 //using namespace mfem;
 #include "mfem.hpp" // include mfem project
 
+// A Coefficient for computing the generalized shear rate and the belonging viscosity model
+class ViscosityModelCoefficient : public mfem::Coefficient
+{
+protected:
+   mfem::GridFunction *u; // displacement
+   
+   mfem::DenseMatrix grad; // auxiliary matrix, used in Eval
+
+public:
+   ViscosityModelCoefficient()
+      : u(NULL) { }
+
+   void SetVelocity(mfem::GridFunction &u_) { u = &u_; }
+   
+   virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
+};
+
 class NurbsStokesSolver
 {
 public:
@@ -57,6 +74,7 @@ public:
    mfem::Array<int> vdbc_bdr; // contains the whole boundary markers
    mfem::Array<int> vdbc_bdr_noslip; // to select only the boundary markers for the no slip walls
    mfem::Array<int> vdbc_bdr_inlet;   // to select only the boundary markers for the inlet
+   mfem::Array<int> vdbc_bdr_outlet;   // to select only the boundary markers for the outlet
    mfem::Array<int> pdbc_bdr; // contains the whole boundary markers
    mfem::Array<int> tdbc_bdr; // contains the whole boundary markers
    mfem::Array<int> tdbc_bdr_inlet;   // to select only the boundary markers for the inlet
@@ -66,6 +84,7 @@ public:
    mfem::Array<int> tdummy_bdr; // contains the whole boundary markers
 
    mfem::Array<int> vel_ess_tdof_list;
+   mfem::Array<int> vel_ess_tdof_list_outlet;
    mfem::Array<int> pres_ess_tdof_list;
    mfem::Array<int> temp_ess_tdof_list;
    mfem::Array<int> vel_ess_tdof_list_dummy;
@@ -108,5 +127,6 @@ public:
    bool solve_flow(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t);
    bool solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &t);
 };
+
 
 #endif // NURBSSTOKESSOLVER_HPP
