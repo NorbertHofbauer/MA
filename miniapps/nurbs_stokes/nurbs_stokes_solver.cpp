@@ -21,10 +21,10 @@ double ViscosityModelCoefficient::Eval(mfem::ElementTransformation &T,
       {
          if (n==m)
          {
-            shearrate = shearrate + 2*grad(n,m)*grad(n,m);
+            shearrate += 2*grad(n,m)*grad(n,m);
          }else
          {
-            shearrate = shearrate + 0.5*(grad(n,m)+grad(n,m))*(grad(n,m)+grad(n,m));
+            shearrate += 0.5*(grad(n,m)+grad(n,m))*(grad(n,m)+grad(n,m));
          }
          //std::cout << "shearrate " << shearrate << " n " << n << " m " << m << "\n";
       }
@@ -199,11 +199,13 @@ bool NurbsStokesSolver::init_dirichletbc()
 
    // for poiseuille flow 
    // mark all used boundary attributes for velocity
+   //vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1;
    vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; vdbc_bdr[3] = 1;
 
    // the boundary attribute 0 and 2 is used for the noslip condition
    // vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; //not needed if already above marked 
    // the boundary attribute 3 is used for a constant velocity at the inlet
+   //vdbc_bdr_inlet = 0; vdbc_bdr_inlet[2] = 1;
    vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1;
    
    vdbc_bdr_outlet = 0; vdbc_bdr_outlet[1] = 1; 
@@ -625,7 +627,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
    a.Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
-0
+
    // grad pressure term
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
