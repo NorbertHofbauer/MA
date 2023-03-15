@@ -14,8 +14,7 @@
 //using namespace mfem;
 #include "mfem.hpp" // include mfem project
 
-// A Coefficient for computing the generalized shear rate and the belonging viscosity model
-class ViscosityModelCoefficient : public mfem::Coefficient
+class ShearRateCoefficient : public mfem::Coefficient
 {
 protected:
    mfem::GridFunction *u; // displacement
@@ -23,10 +22,33 @@ protected:
    mfem::DenseMatrix grad; // auxiliary matrix, used in Eval
 
 public:
-   ViscosityModelCoefficient()
+   ShearRateCoefficient()
       : u(NULL) { }
 
    void SetVelocity(mfem::GridFunction &u_) { u = &u_; }
+   
+   virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
+};
+
+// A Coefficient for computing the generalized shear rate and the belonging viscosity model
+class CarreauModelCoefficient : public mfem::Coefficient
+{
+protected:
+   mfem::GridFunction *u; // displacement
+   double a;
+   double b;
+   double c;
+   
+   mfem::DenseMatrix grad; // auxiliary matrix, used in Eval
+
+public:
+   CarreauModelCoefficient()
+      : u(NULL) { }
+
+   void SetVelocity(mfem::GridFunction &u_) { u = &u_; }
+   void SetA(double a_) { a = a_; }
+   void SetB(double b_) { b = b_; }
+   void SetC(double c_) { c = c_; }
    
    virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
 };

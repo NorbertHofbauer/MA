@@ -61,52 +61,55 @@ int main(int argc, char *argv[])
    nssolver.temp_2 = 50;               // value for temperature
    nssolver.temp_diffusion_const = 0.1; // value for temperature diffusion constant coefficient
    nssolver.meshfile = "../../../MA/data/quad_nurbs.mesh";
-   nssolver.ref_levels = 3;
+   nssolver.ref_levels = 2;
    nssolver.set_order_elevation_velocity(0);
    nssolver.set_order_elevation_pressure(0);
    nssolver.set_order_elevation_temperature(0);
-   nssolver.maxIter = 1000;
+   nssolver.maxIter = 10000;
+
+   nssolver.rtol = 1.e-5; // convergence criteria
+   nssolver.atol = 1.e-5; // convergence criteria
+   
 
    nssolver.init();
 
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),t0(nssolver.tfes),v(nssolver.vfes),p(nssolver.pfes),t(nssolver.tfes);
    //nssolver.visualization = 1;
    nssolver.calc_dirichletbc(v0,p0,t0);
-/*
-   std::cout << "v0\n";
-   std::cout << v0 << "\n";
-   std::cout << "p0\n";
-   std::cout << p0 << "\n";
-   std::cout << "t0\n";
-   std::cout << t0 << "\n";
-*/
-//   nssolver.solve_temperature(t0,v,t);
-   nssolver.visualization = 1;
 
-   nssolver.solve_flow(v0,p0,t0,v,p,t);
-   
-   v0 = v;
-   
-   nssolver.solve_temperature(v0,t0,v,t);
-   
-   v = v0;
+   for (size_t i = 0; i < 1; i++)
+   {  
+      if ((i==-1)|(i==0))
+      {
+         nssolver.visualization = 1;
+      }
+      nssolver.solve_flow(v0,p0,t0,v,p,t);
+      v0 = v;
+      p0 = p;
+      nssolver.visualization = 0;
+      
+      nssolver.solve_temperature(v0,t0,v,t);
+      nssolver.visualization = 0;
+      //v = v0;
+      t0 = t;
 
-   /*
-   std::cout << "v0\n";
-   std::cout << v0 << "\n";
-   std::cout << "p0\n";
-   std::cout << p0 << "\n";
-   std::cout << "t0\n";
-   std::cout << t0 << "\n";
-   std::cout << "v\n";
-   std::cout << v << "\n";
-   std::cout << "p\n";
-   std::cout << p << "\n";
-   std::cout << "t\n";
-   std::cout << t << "\n";
-   */
-
+      //std::cout << "v0\n";
+      //std::cout << v0 << "\n";
+      //std::cout << "p0\n";
+      //std::cout << p0 << "\n";
+      //std::cout << "t0\n";
+      //std::cout << t0 << "\n";
+      //std::cout << "v\n";
+      //std::cout << v << "\n";
+      //std::cout << "p\n";
+      //std::cout << p << "\n";
+      //std::cout << "t\n";
+      //std::cout << t << "\n";
+      
+      std::cout << "NURBS STOKES ITERATION " + std::to_string(i) + " END\n";
+   }
+   
    std::cout << "NURBS STOKES END\n";
-
+  
    return 0;
 }

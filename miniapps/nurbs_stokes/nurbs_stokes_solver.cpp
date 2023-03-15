@@ -6,7 +6,7 @@
 #include <cmath>     // to get access to math functions
 
 
-double ViscosityModelCoefficient::Eval(mfem::ElementTransformation &T,
+double ShearRateCoefficient::Eval(mfem::ElementTransformation &T,
                                const mfem::IntegrationPoint &ip)
 {
    MFEM_ASSERT(u != NULL, "velocity field is not set");
@@ -31,6 +31,37 @@ double ViscosityModelCoefficient::Eval(mfem::ElementTransformation &T,
    }
    shearrate = std::sqrt(shearrate);
    return shearrate;
+}
+
+double CarreauModelCoefficient::Eval(mfem::ElementTransformation &T,
+                               const mfem::IntegrationPoint &ip)
+{
+   MFEM_ASSERT(u != NULL, "velocity field is not set");
+
+   //double L = lambda.Eval(T, ip);
+   //double M = mu.Eval(T, ip);
+   double dynamic_viscosity = 0;
+   double shearrate = 0;
+   u->GetVectorGradient(T, grad);
+   for (size_t n = 0; n < grad.Size(); n++)
+   {
+      for (size_t m = 0; m < grad.Size(); m++)
+      {
+         if (n==m)
+         {
+            shearrate += 2*grad(n,m)*grad(n,m);
+         }else
+         {
+            shearrate += 0.5*(grad(n,m)+grad(n,m))*(grad(n,m)+grad(n,m));
+         }
+         //std::cout << "shearrate " << shearrate << " n " << n << " m " << m << "\n";
+      }
+   }
+   shearrate = std::sqrt(shearrate);
+
+   dynamic_viscosity = a/std::pow((1+b*shearrate),c);
+
+   return dynamic_viscosity;
 }
 
 NurbsStokesSolver::NurbsStokesSolver()
@@ -199,19 +230,28 @@ bool NurbsStokesSolver::init_dirichletbc()
 
    // for poiseuille flow 
    // mark all used boundary attributes for velocity
+   // couette
    //vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1;
+   // poiseuille
    vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; vdbc_bdr[3] = 1;
+   // cavity
+   //vdbc_bdr = 1;
 
    // the boundary attribute 0 and 2 is used for the noslip condition
    // vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; //not needed if already above marked 
    // the boundary attribute 3 is used for a constant velocity at the inlet
+   // couette
    //vdbc_bdr_inlet = 0; vdbc_bdr_inlet[2] = 1;
+   // poiseuille
    vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1;
+   // cavity
+   //vdbc_bdr_inlet = 0; vdbc_bdr_inlet[2] = 1;
    
+
    vdbc_bdr_outlet = 0; vdbc_bdr_outlet[1] = 1; 
    
    // mark all used boundary attributes for pressure
-   pdbc_bdr = 0; pdbc_bdr[1] = 1;
+   pdbc_bdr = 0; pdbc_bdr[1] = 0;
 
    // temperature
    // mark all used boundary attributes for temperature
@@ -623,7 +663,14 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // Momentum equation
    // diffusion term
    mfem::BilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
-   mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
+   //mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
+   
+   CarreauModelCoefficient kin_vis;
+   kin_vis.SetA(200);
+   kin_vis.SetB(1);
+   kin_vis.SetC(1);
+   kin_vis.SetVelocity(v0);
+   
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
    a.Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
@@ -631,8 +678,10 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // grad pressure term
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
-   mfem::ConstantCoefficient minusOne(-1.0); // -1 because of the sign in the equation
+   // no clue right now about the right sign
+   mfem::ConstantCoefficient minusOne(1); // -1 because of the sign in the equation
    b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
+   //b.AddDomainIntegrator(new mfem::MixedScalarWeakGradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    b.Assemble(); // assemble the mixed bilinear form (matrix)
    //b.Finalize(); not needed, will be called on form linear system
 
@@ -843,11 +892,15 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
    // SHEARRATE COMPUTATION FOR CHECKING
    mfem::GridFunction shearrate(tfes);
    shearrate = 0;
-   ViscosityModelCoefficient vmc;
-   vmc.SetVelocity(v0);
+   //ShearRateCoefficient src;
+   CarreauModelCoefficient src;
+   src.SetA(200);
+   src.SetB(1);
+   src.SetC(1);
+   src.SetVelocity(v0);
 
    mfem::LinearForm *rhs(new mfem::LinearForm(tfes)); // define linear form for rhs
-   rhs->AddDomainIntegrator(new mfem::DomainLFIntegrator(vmc));
+   rhs->AddDomainIntegrator(new mfem::DomainLFIntegrator(src));
    rhs->Assemble(); // assemble the linear form (vector)
    mfem::BilinearForm a(tfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
@@ -872,7 +925,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
       shearrate_ofs.precision(8);
       shearrate.Save(shearrate_ofs);
    }
-   //if (visualization)
+   if (visualization)
    {
       char vishost[] = "localhost";
       int  visport   = 19916;
@@ -880,6 +933,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh << shearrate << std::flush;
    }
+
    return true;
 }
 
