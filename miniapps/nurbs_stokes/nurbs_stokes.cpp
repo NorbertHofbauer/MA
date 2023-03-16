@@ -34,7 +34,11 @@ int main(int argc, char *argv[])
    order[1] = 0;
    order[2] = 0;
    order[3] = 0;
-
+   double v_error_norm_l2 = 1;
+   double p_error_norm_l2 = 1;
+   double t_error_norm_l2 = 1;
+   double max_error = 1e-3;
+   
    // Parse command-line options.
    // input options for our executable
    mfem::OptionsParser args(argc, argv);
@@ -66,24 +70,32 @@ int main(int argc, char *argv[])
    nssolver.set_order_elevation_velocity(1);
    nssolver.set_order_elevation_pressure(1);
    nssolver.set_order_elevation_temperature(1);
-   nssolver.maxIter = 10000;
+   nssolver.maxIter = 5000;
 
-   nssolver.rtol = 1.e-5; // convergence criteria
+   nssolver.rtol = 1.e-6; // convergence criteria
    nssolver.atol = 1.e-5; // convergence criteria
    
-
    nssolver.init();
 
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),t0(nssolver.tfes),v(nssolver.vfes),p(nssolver.pfes),t(nssolver.tfes);
    //nssolver.visualization = 1;
    nssolver.calc_dirichletbc(v0,p0,t0);
-
-   for (size_t i = 0; i < 2; i++)
+   
+   //for (size_t i = 0; i < 28; i++)
+   int iter=0;
+   int max_iter=10;
+   while ((v_error_norm_l2>max_error)||(p_error_norm_l2>max_error)||(t_error_norm_l2>max_error))
    {  
-      if ((i==0)|(i==1))
+      iter+=1;
+      if ((iter==-1)|(iter==max_iter))
       {
          nssolver.visualization = 1;
       }
+
+      v_error_norm_l2 = v0.Norml2();
+      p_error_norm_l2 = p0.Norml2();
+      t_error_norm_l2 = t0.Norml2();
+
       nssolver.solve_flow(v0,p0,t0,v,p,t);
       v0 = v;
       p0 = p;
@@ -94,6 +106,13 @@ int main(int argc, char *argv[])
       //v = v0;
       t0 = t;
 
+      v_error_norm_l2 = std::abs(v_error_norm_l2 - v0.Norml2());
+      p_error_norm_l2 = std::abs(p_error_norm_l2 - p0.Norml2());
+      t_error_norm_l2 = std::abs(t_error_norm_l2 - t0.Norml2());
+      
+      std::cout << "v_error_norm l2 ## p_error_norm l2 ## t_error_norm l2 \n";
+      std::cout << v_error_norm_l2 << " ## "<< p_error_norm_l2 << " ## "<< t_error_norm_l2 << " \n";
+      
       //std::cout << "v0\n";
       //std::cout << v0 << "\n";
       //std::cout << "p0\n";
@@ -107,10 +126,15 @@ int main(int argc, char *argv[])
       //std::cout << "t\n";
       //std::cout << t << "\n";
       
-      std::cout << "NURBS STOKES ITERATION " + std::to_string(i) + " END\n";
+      std::cout << "NURBS STOKES ITERATION " + std::to_string(iter) + " END\n";
+      if (iter==max_iter)
+      {
+         break;
+      }
+      
    }
-   
+
    std::cout << "NURBS STOKES END\n";
-  
+         
    return 0;
 }

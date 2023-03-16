@@ -238,7 +238,7 @@ bool NurbsStokesSolver::init_dirichletbc()
    //vdbc_bdr = 1;
 
    // the boundary attribute 0 and 2 is used for the noslip condition
-   // vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; //not needed if already above marked 
+   vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; //not needed if already above marked 
    // the boundary attribute 3 is used for a constant velocity at the inlet
    // couette
    //vdbc_bdr_inlet = 0; vdbc_bdr_inlet[2] = 1;
@@ -474,7 +474,8 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    bc_solver.SetRelTol(rtol);
    bc_solver.SetMaxIter(maxIter);
    bc_solver.SetOperator(A_BC);
-   bc_solver.SetPrintLevel(1);
+   bc_solver.SetKDim((int)maxIter/5);
+   bc_solver.SetPrintLevel(3);
 
    // solve the system
    bc_solver.Mult(F_BC, V_BC);
@@ -590,6 +591,13 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
       sol_sock3 << "solution\n" << *mesh << t_bc << std::flush;
    }
 
+   // SET VALUES ON NO SLIP BOUNDARIES TO ZERO!!!
+   mfem::Vector zerovector(2);
+   zerovector = 0.0;
+   mfem::VectorConstantCoefficient zero(zerovector);
+   v_bc.ProjectBdrCoefficient(zero,vdbc_bdr_noslip);
+   //
+
    v0=v_bc;
    p0=p_bc;
    t0=t_bc;
@@ -679,7 +687,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    // no clue right now about the right sign
-   mfem::ConstantCoefficient minusOne(-1.0); // -1 because of the sign in the equation
+   mfem::ConstantCoefficient minusOne(1.0); // -1 because of the sign in the equation
    b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    //b.AddDomainIntegrator(new mfem::MixedScalarWeakGradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    b.Assemble(); // assemble the mixed bilinear form (matrix)
@@ -722,14 +730,14 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // setup minres solver, should be enough for our linear system
    // without preconditioning
-   mfem::MINRESSolver solver; 
-   //mfem::GMRESSolver solver;
+   //mfem::MINRESSolver solver; 
+   mfem::GMRESSolver solver;
    //solver.iterative_mode = false;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
-   //solver.SetKDim(2000);
+   solver.SetKDim((int)maxIter/5);
    solver.SetPrintLevel(3);
    
    //std::cout << rhs_flow.BlockSize(0)  <<"\n";
@@ -852,6 +860,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(D);
+   solver.SetKDim((int)maxIter/5);
    solver.SetPrintLevel(3);
 
    std::cout << "SOLVE TEMPERATUREFIELD \n";   
@@ -893,7 +902,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh << t << std::flush;
    }
-
+   /*
    // SHEARRATE COMPUTATION FOR CHECKING
    mfem::GridFunction shearrate(tfes);
    shearrate = 0;
@@ -938,6 +947,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh << shearrate << std::flush;
    }
+   */
 
    return true;
 }
