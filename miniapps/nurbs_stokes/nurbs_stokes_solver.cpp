@@ -666,9 +666,9 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    //mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
    
    CarreauModelCoefficient kin_vis;
-   kin_vis.SetA(200);
-   kin_vis.SetB(1);
-   kin_vis.SetC(1);
+   kin_vis.SetA(6500);
+   kin_vis.SetB(0.13);
+   kin_vis.SetC(0.725);
    kin_vis.SetVelocity(v0);
    
    a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
@@ -679,7 +679,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    // no clue right now about the right sign
-   mfem::ConstantCoefficient minusOne(1); // -1 because of the sign in the equation
+   mfem::ConstantCoefficient minusOne(-1.0); // -1 because of the sign in the equation
    b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    //b.AddDomainIntegrator(new mfem::MixedScalarWeakGradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    b.Assemble(); // assemble the mixed bilinear form (matrix)
@@ -708,6 +708,10 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    stokesOp.SetBlock(0,0,&A);
    stokesOp.SetBlock(0,1,&B);
    stokesOp.SetBlock(1,0,&C);
+   
+   //mfem::TransposeOperator *Bt = NULL;
+   //Bt = new mfem::TransposeOperator(&B);
+   //stokesOp.SetBlock(1,0,Bt);
 
    mfem::StopWatch chrono; // stop watch to calc solve time
    chrono.Clear();
@@ -718,14 +722,15 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // setup minres solver, should be enough for our linear system
    // without preconditioning
-   //mfem::MINRESSolver solver; 
-   mfem::GMRESSolver solver;
+   mfem::MINRESSolver solver; 
+   //mfem::GMRESSolver solver;
    //solver.iterative_mode = false;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(stokesOp);
-   solver.SetPrintLevel(1);
+   //solver.SetKDim(2000);
+   solver.SetPrintLevel(3);
    
    //std::cout << rhs_flow.BlockSize(0)  <<"\n";
    //std::cout << rhs_flow.BlockSize(1)  <<"\n";
@@ -847,7 +852,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
    solver.SetRelTol(rtol);
    solver.SetMaxIter(maxIter);
    solver.SetOperator(D);
-   solver.SetPrintLevel(1);
+   solver.SetPrintLevel(3);
 
    std::cout << "SOLVE TEMPERATUREFIELD \n";   
    // solve the system

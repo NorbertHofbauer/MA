@@ -60,11 +60,12 @@ int main(int argc, char *argv[])
    nssolver.temp_1 = 0;               // value for temperature
    nssolver.temp_2 = 50;               // value for temperature
    nssolver.temp_diffusion_const = 0.1; // value for temperature diffusion constant coefficient
-   nssolver.meshfile = "../../../MA/data/quad_nurbs.mesh";
-   nssolver.ref_levels = 2;
-   nssolver.set_order_elevation_velocity(0);
-   nssolver.set_order_elevation_pressure(0);
-   nssolver.set_order_elevation_temperature(0);
+   //nssolver.meshfile = "../../../MA/data/quad_nurbs.mesh";
+   nssolver.meshfile = "../../../MA/data/quad_lin_nurbs.mesh";
+   nssolver.ref_levels = 3;
+   nssolver.set_order_elevation_velocity(1);
+   nssolver.set_order_elevation_pressure(1);
+   nssolver.set_order_elevation_temperature(1);
    nssolver.maxIter = 10000;
 
    nssolver.rtol = 1.e-5; // convergence criteria
@@ -77,9 +78,9 @@ int main(int argc, char *argv[])
    //nssolver.visualization = 1;
    nssolver.calc_dirichletbc(v0,p0,t0);
 
-   for (size_t i = 0; i < 1; i++)
+   for (size_t i = 0; i < 2; i++)
    {  
-      if ((i==-1)|(i==0))
+      if ((i==0)|(i==1))
       {
          nssolver.visualization = 1;
       }
