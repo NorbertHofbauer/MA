@@ -14,6 +14,8 @@ add_mfem_miniapp(
   MAIN nurbs_stokes.cpp
   nurbs_stokes_solver.cpp
   nurbs_stokes_solver.hpp
+  viscosity_models.cpp
+  viscosity_models.hpp
   LIBRARIES mfem)
 
 if (MFEM_ENABLE_TESTING)

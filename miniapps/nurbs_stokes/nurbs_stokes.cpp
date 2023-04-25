@@ -13,6 +13,7 @@
 
 #include "mfem.hpp" // include mfem project
 #include "nurbs_stokes_solver.hpp"
+#include "viscosity_models.hpp"
 
 // we don`t want to use namespaces here, otherwise code is harder to unterstand, e.g. mfem::Vector != std::vector
 //using namespace std; // bad idea!!!!
@@ -57,6 +58,12 @@ int main(int argc, char *argv[])
    }
    args.PrintOptions(std::cout);
 
+   // viscosity model - must be a mfem::coefficient or a child class from coefficient
+   CarreauModelCoefficient kin_vis;
+   //mfem::ConstantCoefficient kin_vis(kin_viscosity);
+   //kin_vis = new CarreauModelCoefficient();
+   //CarreauModelCoefficient kin_vis(1,2,3);
+
    NurbsStokesSolver nssolver;
    nssolver.v_max = 12;               // max velocity for our boundary on the inlet
    nssolver.p_val = 100;           // value for pressure boundary
@@ -96,7 +103,7 @@ int main(int argc, char *argv[])
       p_error_norm_l2 = p0.Norml2();
       t_error_norm_l2 = t0.Norml2();
 
-      nssolver.solve_flow(v0,p0,t0,v,p,t);
+      nssolver.solve_flow(v0,p0,t0,v,p,t,kin_vis);
       v0 = v;
       p0 = p;
       nssolver.visualization = 0;

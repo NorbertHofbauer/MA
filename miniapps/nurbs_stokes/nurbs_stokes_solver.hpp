@@ -13,45 +13,7 @@
 //using namespace std; // bad idea!!!!
 //using namespace mfem;
 #include "mfem.hpp" // include mfem project
-
-class ShearRateCoefficient : public mfem::Coefficient
-{
-protected:
-   mfem::GridFunction *u; // displacement
-   
-   mfem::DenseMatrix grad; // auxiliary matrix, used in Eval
-
-public:
-   ShearRateCoefficient()
-      : u(NULL) { }
-
-   void SetVelocity(mfem::GridFunction &u_) { u = &u_; }
-   
-   virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
-};
-
-// A Coefficient for computing the generalized shear rate and the belonging viscosity model
-class CarreauModelCoefficient : public mfem::Coefficient
-{
-protected:
-   mfem::GridFunction *u; // displacement
-   double a;
-   double b;
-   double c;
-   
-   mfem::DenseMatrix grad; // auxiliary matrix, used in Eval
-
-public:
-   CarreauModelCoefficient()
-      : u(NULL) { }
-
-   void SetVelocity(mfem::GridFunction &u_) { u = &u_; }
-   void SetA(double a_) { a = a_; }
-   void SetB(double b_) { b = b_; }
-   void SetC(double c_) { c = c_; }
-   
-   virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
-};
+#include "viscosity_models.hpp" // include our shear rate models
 
 class NurbsStokesSolver
 {
@@ -143,10 +105,11 @@ public:
 
    bool calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0); // calculate our gridfunction on the dirchlet bc
    
-   bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t); // assemble and compute our system matrices with strong boundary conditions
+   bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t, mfem::Coefficient &kin_vis); // assemble and compute our system matrices with strong boundary conditions
+   
    bool calc_temperaturesystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &t); // assemble and compute our system matrices with strong boundary conditions
 
-   bool solve_flow(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t);
+   bool solve_flow(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t,mfem::Coefficient &kin_vis);
    bool solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &t);
 };
 

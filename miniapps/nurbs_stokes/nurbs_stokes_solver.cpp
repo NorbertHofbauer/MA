@@ -5,65 +5,6 @@
 #include <algorithm> // to get access to math functions
 #include <cmath>     // to get access to math functions
 
-
-double ShearRateCoefficient::Eval(mfem::ElementTransformation &T,
-                               const mfem::IntegrationPoint &ip)
-{
-   MFEM_ASSERT(u != NULL, "velocity field is not set");
-
-   //double L = lambda.Eval(T, ip);
-   //double M = mu.Eval(T, ip);
-   double shearrate = 0;
-   u->GetVectorGradient(T, grad);
-   for (size_t n = 0; n < grad.Size(); n++)
-   {
-      for (size_t m = 0; m < grad.Size(); m++)
-      {
-         if (n==m)
-         {
-            shearrate += 2*grad(n,m)*grad(n,m);
-         }else
-         {
-            shearrate += 0.5*(grad(n,m)+grad(n,m))*(grad(n,m)+grad(n,m));
-         }
-         //std::cout << "shearrate " << shearrate << " n " << n << " m " << m << "\n";
-      }
-   }
-   shearrate = std::sqrt(shearrate);
-   return shearrate;
-}
-
-double CarreauModelCoefficient::Eval(mfem::ElementTransformation &T,
-                               const mfem::IntegrationPoint &ip)
-{
-   MFEM_ASSERT(u != NULL, "velocity field is not set");
-
-   //double L = lambda.Eval(T, ip);
-   //double M = mu.Eval(T, ip);
-   double dynamic_viscosity = 0;
-   double shearrate = 0;
-   u->GetVectorGradient(T, grad);
-   for (size_t n = 0; n < grad.Size(); n++)
-   {
-      for (size_t m = 0; m < grad.Size(); m++)
-      {
-         if (n==m)
-         {
-            shearrate += 2*grad(n,m)*grad(n,m);
-         }else
-         {
-            shearrate += 0.5*(grad(n,m)+grad(n,m))*(grad(n,m)+grad(n,m));
-         }
-         //std::cout << "shearrate " << shearrate << " n " << n << " m " << m << "\n";
-      }
-   }
-   shearrate = std::sqrt(shearrate);
-
-   dynamic_viscosity = a/std::pow((1+b*shearrate),c);
-
-   return dynamic_viscosity;
-}
-
 NurbsStokesSolver::NurbsStokesSolver()
 {
    v_max = 28;               // max velocity for our boundary on the inlet
@@ -605,7 +546,7 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    return true;
 }
 
-bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t)
+bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t, mfem::Coefficient &kin_vis)
 {  
    // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
    // we need Blockoperators to define the equation system
@@ -668,19 +609,27 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    g->Assemble(); // assemble the linear form (vector)
    
+
    // Momentum equation
    // diffusion term
    mfem::BilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    //mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
    
-   CarreauModelCoefficient kin_vis;
-   kin_vis.SetA(6500);
-   kin_vis.SetB(0.13);
-   kin_vis.SetC(0.725);
-   kin_vis.SetVelocity(v0);
-   
-   a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis,sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
-   a.Assemble(); // assemble the bilinear form (matrix)
+   // chose viscosity model
+   CarreauModelCoefficient* temp_kin_vis_carreau;
+   if (temp_kin_vis_carreau = dynamic_cast<CarreauModelCoefficient*>(&kin_vis))
+   {
+      CarreauModelCoefficient kin_vis_carreau = *temp_kin_vis_carreau;
+      kin_vis_carreau.SetVelocity(v0);
+      a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis_carreau, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+      a.Assemble();
+   }else{
+      a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+      a.Assemble();
+   }
+
+   //a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis_used, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+   //a.Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
 
    // grad pressure term
@@ -953,11 +902,11 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
 }
 
 
-bool NurbsStokesSolver::solve_flow(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t)
+bool NurbsStokesSolver::solve_flow(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &t0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &t,mfem::Coefficient &kin_vis)
 {  
    if (bcstrong)
    {
-      calc_flowsystem_strongbc(v0, p0, t0, v, p, t);
+      calc_flowsystem_strongbc(v0, p0, t0, v, p, t, kin_vis);
    } else if (bcweak)
    {
       /* code */
