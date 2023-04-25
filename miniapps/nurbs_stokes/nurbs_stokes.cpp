@@ -40,7 +40,8 @@ int main(int argc, char *argv[])
    double p_error_norm_l2 = 1;
    double t_error_norm_l2 = 1;
    double max_error = 1e-3;
-   
+   mfem::Array<int> vbdr_noslip;
+
    // Parse command-line options.
    // input options for our executable
    mfem::OptionsParser args(argc, argv);
@@ -51,6 +52,8 @@ int main(int argc, char *argv[])
    args.AddOption(&visualization, "-vis", "--visualization", "-no-vis",
                   "--no-visualization",
                   "Enable or disable GLVis visualization.");
+   args.AddOption(&vbdr_noslip, "-vnos", "--velocity_bdr_noslip", 
+                  "Velocity Boundaries with no slip condition. e.g. -nos 1 2 6 5 ...");
    args.Parse();
    if (!args.Good())
    {
