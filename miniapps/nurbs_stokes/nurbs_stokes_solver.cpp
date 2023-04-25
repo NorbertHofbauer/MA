@@ -10,6 +10,7 @@ NurbsStokesSolver::NurbsStokesSolver()
    v_max = 28;               // max velocity for our boundary on the inlet
    p_val = 100;           // value for pressure boundary
    kin_viscosity = 200;    // value for kinematic visosity
+   density = 1;
    temp_1 = 0;               // value for temperature
    temp_2 = 50;               // value for temperature
    temp_diffusion_const = 0.1; // value for temperature diffusion constant coefficient
@@ -236,17 +237,6 @@ bool NurbsStokesSolver::set_order_elevation_pressure(int elevationorder)
 bool NurbsStokesSolver::set_order_elevation_temperature(int elevationorder)
 {
    order[3] = elevationorder;
-   return true;
-}
-
-bool NurbsStokesSolver::set_parameters(std::vector<double> parameters)
-{
-   v_max = parameters[0];               // max velocity for our boundary on the inlet
-   p_val = parameters[1];           // value for pressure boundary
-   kin_viscosity = parameters[2];    // value for kinematic visosity
-   temp_1 = parameters[3];               // value for temperature
-   temp_2 = parameters[4];               // value for temperature
-   temp_diffusion_const = parameters[5]; // value for temperature diffusion constant coefficient
    return true;
 }
 
@@ -636,8 +626,8 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
    mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
    // no clue right now about the right sign
-   mfem::ConstantCoefficient minusOne(1.0); // -1 because of the sign in the equation
-   b.AddDomainIntegrator(new mfem::GradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
+   mfem::ConstantCoefficient coef_b(1.0/density); // -1 because of the sign in the equation
+   b.AddDomainIntegrator(new mfem::GradientIntegrator(coef_b)); // mixed bilinear form (lambda*nabla(u),v_vector)
    //b.AddDomainIntegrator(new mfem::MixedScalarWeakGradientIntegrator(minusOne)); // mixed bilinear form (lambda*nabla(u),v_vector)
    b.Assemble(); // assemble the mixed bilinear form (matrix)
    //b.Finalize(); not needed, will be called on form linear system
@@ -645,8 +635,8 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // continuity term
    // define the mixed bilinear form results in n x m matrix, we use the pressure finite element space as test space and the velocity space as trial space
    mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
-   mfem::ConstantCoefficient One(1.0); // +1 because of the sign in the equation
-   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(One)); // mixed bilinear form (lambda*nabla . u_vector, v)
+   mfem::ConstantCoefficient coef_c(1.0); // +1 because of the sign in the equation
+   c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(coef_c)); // mixed bilinear form (lambda*nabla . u_vector, v)
    c.Assemble(); // assemble the mixed bilinear form (matrix)
    //c.Finalize(); not needed, will be called on form linear system
 

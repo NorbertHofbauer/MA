@@ -3,6 +3,11 @@
 
 #include "mfem.hpp" // include mfem project
 
+// generalized shear rate
+// book 
+// Wilczyński
+// Rheology in Polymer Processing, page 48
+
 class ShearRate
 {
 
@@ -28,7 +33,11 @@ public:
    virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
 };
 
-// A Coefficient for computing the generalized shear rate and the belonging viscosity model
+// Carreau Constitutive Equation
+// book 
+// Hopmann 
+// Extrusion Dies
+// for Plastics and Rubber, page 14
 class CarreauModelCoefficient : public mfem::Coefficient
 {
 protected:
@@ -40,9 +49,10 @@ public:
    const double a;
    const double b;
    const double c;
+   const double density;
 
-   CarreauModelCoefficient(const double A = 6500, const double B = 0.13, const double C = 0.725)
-      : u(NULL), a(A), b(B), c(C) { }
+   CarreauModelCoefficient(const double A, const double B, const double C, const double D)
+      : u(NULL), a(A), b(B), c(C), density(D) { }
 
    void SetVelocity(mfem::GridFunction &u_) { u = &u_; }
    

@@ -66,11 +66,13 @@ double CarreauModelCoefficient::Eval(mfem::ElementTransformation &T,
    //double M = mu.Eval(T, ip);
    ShearRate shearrate;
    double dynamic_viscosity = 0;
+   double kinematic_viscosity = 0;
    
    u->GetVectorGradient(T, grad);
    
    dynamic_viscosity = a/std::pow((1+b*shearrate.Calc(grad)),c);
+   kinematic_viscosity = dynamic_viscosity/density;
 
-   return dynamic_viscosity;
+   return kinematic_viscosity;
 }
 ;

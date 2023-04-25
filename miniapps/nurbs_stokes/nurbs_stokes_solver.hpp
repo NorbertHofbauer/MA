@@ -28,6 +28,7 @@ public:
    double v_max;               // max velocity for our boundary on the inlet
    double p_val;           // value for pressure boundary
    double kin_viscosity;    // value for kinematic visosity
+   double density;    // value for density
    double temp_1;               // value for temperature
    double temp_2;               // value for temperature
    double temp_diffusion_const; // value for temperature diffusion constant coefficient
@@ -96,7 +97,6 @@ public:
    bool set_order_elevation_velocity(int elevationorder); //set the order elevation for the velocity field
    bool set_order_elevation_pressure(int elevationorder); //set the order elevation for the pressure field
    bool set_order_elevation_temperature(int elevationorder); //set the order elevation for the temperature field
-   bool set_parameters(std::vector<double> parameters); // set the parameter values
    bool set_dirichletbc_velocity_noslip(std::vector<int> boundary_marker); //sets the dirichlet boundary in the velocity field for the noslip conditions
    bool set_dirichletbc_velocity_inlet(std::vector<int> boundary_marker); //sets the dirichlet boundary in the velocity field for the inlet
    bool set_dirichletbc_pressure(std::vector<int> boundary_marker); //sets the dirichlet boundary in the pressure field

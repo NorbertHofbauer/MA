@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
    double v_max = 28;               // max velocity for our boundary on the inlet
    double p_val = 100;           // value for pressure boundary
    double kin_viscosity = 20000;    // value for kinematic visosity
+   double density = 2;    // value for density
    const char *mesh_file = "../../../MA/data/quad_nurbs.mesh";  //our standard test mesh
    int ref_levels = 0;              // standard number of refinements for the mesh
    bool visualization = 1;
@@ -59,7 +60,7 @@ int main(int argc, char *argv[])
    args.PrintOptions(std::cout);
 
    // viscosity model - must be a mfem::coefficient or a child class from coefficient
-   CarreauModelCoefficient kin_vis;
+   CarreauModelCoefficient kin_vis(6500, 0.13, 0.725, density);
    //mfem::ConstantCoefficient kin_vis(kin_viscosity);
    //kin_vis = new CarreauModelCoefficient();
    //CarreauModelCoefficient kin_vis(1,2,3);
@@ -68,6 +69,7 @@ int main(int argc, char *argv[])
    nssolver.v_max = 12;               // max velocity for our boundary on the inlet
    nssolver.p_val = 100;           // value for pressure boundary
    nssolver.kin_viscosity = 200;    // value for kinematic visosity
+   nssolver.density = density;     // density of the fluid
    nssolver.temp_1 = 0;               // value for temperature
    nssolver.temp_2 = 50;               // value for temperature
    nssolver.temp_diffusion_const = 0.1; // value for temperature diffusion constant coefficient
