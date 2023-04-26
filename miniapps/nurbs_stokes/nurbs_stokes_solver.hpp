@@ -32,6 +32,14 @@ public:
    double temp_1;               // value for temperature
    double temp_2;               // value for temperature
    double temp_diffusion_const; // value for temperature diffusion constant coefficient
+   // boundaries user data
+   mfem::Array<int> user_vdbc_bdr_noslip;
+   mfem::Array<int> user_vdbc_bdr;
+   mfem::Vector user_vdbc_bdr_values;
+   mfem::Array<int> user_pdbc_bdr;
+   mfem::Vector user_pdbc_bdr_values;
+   mfem::Array<int> user_tdbc_bdr;
+   mfem::Vector user_tdbc_bdr_values;
 
    const char *meshfile; // path to meshfile
    mfem::Mesh *mesh;  // mfem mesh object
@@ -56,20 +64,16 @@ public:
    mfem::FiniteElementSpace *pfes;  // pressure finite element space, with dimension 1 (scalar field)
    mfem::FiniteElementSpace *tfes;  // temperature finite element space, with dimension 1 (scalar field)
    // dirichlet boundaries
-   mfem::Array<int> vdbc_bdr; // contains the whole boundary markers
+   mfem::Array<int> vdbc_bdr; // contains the set boundary markers
+   mfem::Array<int> vdbc_bdr_all; // contains the whole boundary markers
    mfem::Array<int> vdbc_bdr_noslip; // to select only the boundary markers for the no slip walls
-   mfem::Array<int> vdbc_bdr_inlet;   // to select only the boundary markers for the inlet
-   mfem::Array<int> vdbc_bdr_outlet;   // to select only the boundary markers for the outlet
    mfem::Array<int> pdbc_bdr; // contains the whole boundary markers
    mfem::Array<int> tdbc_bdr; // contains the whole boundary markers
-   mfem::Array<int> tdbc_bdr_inlet;   // to select only the boundary markers for the inlet
-   mfem::Array<int> tdbc_bdr_walls;   // to select only the boundary markers for the walls
    mfem::Array<int> vdummy_bdr; // contains the whole boundary markers
    mfem::Array<int> pdummy_bdr; // contains the whole boundary markers
    mfem::Array<int> tdummy_bdr; // contains the whole boundary markers
 
    mfem::Array<int> vel_ess_tdof_list;
-   mfem::Array<int> vel_ess_tdof_list_outlet;
    mfem::Array<int> pres_ess_tdof_list;
    mfem::Array<int> temp_ess_tdof_list;
    mfem::Array<int> vel_ess_tdof_list_dummy;
@@ -97,11 +101,10 @@ public:
    bool set_order_elevation_velocity(int elevationorder); //set the order elevation for the velocity field
    bool set_order_elevation_pressure(int elevationorder); //set the order elevation for the pressure field
    bool set_order_elevation_temperature(int elevationorder); //set the order elevation for the temperature field
-   bool set_dirichletbc_velocity_noslip(std::vector<int> boundary_marker); //sets the dirichlet boundary in the velocity field for the noslip conditions
-   bool set_dirichletbc_velocity_inlet(std::vector<int> boundary_marker); //sets the dirichlet boundary in the velocity field for the inlet
-   bool set_dirichletbc_pressure(std::vector<int> boundary_marker); //sets the dirichlet boundary in the pressure field
-   bool set_dirichletbc_temperature_inlet(std::vector<int> boundary_marker); //sets the dirichlet boundary in the temperature field for the inlet
-   bool set_dirichletbc_temperature_walls(std::vector<int> boundary_marker); //sets the dirichlet boundary in the temperature field for the walls
+   bool set_dirichletbc_velocity_noslip(mfem::Array<int> boundaries); //sets the dirichlet boundary in the velocity field for the noslip conditions
+   bool set_dirichletbc_velocity(mfem::Array<int> boundaries,mfem::Vector boundaries_values); //sets the dirichlet boundary in the velocity field
+   bool set_dirichletbc_pressure(mfem::Array<int> boundaries,mfem::Vector boundaries_values); //sets the dirichlet boundary in the pressure field
+   bool set_dirichletbc_temperature(mfem::Array<int> boundaries,mfem::Vector boundaries_values); //sets the dirichlet boundary in the temperature field
 
    bool calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &t0); // calculate our gridfunction on the dirchlet bc
    

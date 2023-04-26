@@ -21,6 +21,7 @@ NurbsStokesSolver::NurbsStokesSolver()
    order[1] = 0;                    // order elevation velocity
    order[2] = 0;                    // order elevation pressure
    order[3] = 0;                    // order elevation temperature
+
 }
 
 NurbsStokesSolver::~NurbsStokesSolver()
@@ -83,7 +84,6 @@ bool NurbsStokesSolver::init()
       // init the dirichlet bc
       this->init_dirichletbc();
 
-
       is_initialized = true;  
       return true;
   }
@@ -121,91 +121,70 @@ bool NurbsStokesSolver::use_bcweak(bool use)
 }
 
 bool NurbsStokesSolver::init_dirichletbc()
-{
-   vdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
+{   
+   MFEM_ASSERT(user_vdbc_bdr.Size()*sdim == user_vdbc_bdr_values.Size(), "number of given velocity boundaries and values does'nt match!");
+   MFEM_ASSERT(user_pdbc_bdr.Size() == user_pdbc_bdr_values.Size(), "number of given pressure boundaries and values does'nt match!");
+   MFEM_ASSERT(user_tdbc_bdr.Size() == user_tdbc_bdr_values.Size(), "number of given temperature boundaries and values does'nt match!");
+
+   // init our boundary markers
+   vdbc_bdr_all = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
+   vdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the set boundary markers
    vdbc_bdr_noslip = mfem::Array<int>(mesh->bdr_attributes.Max()); // to select only the boundary markers for the no slip walls
-   vdbc_bdr_inlet = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the boundary markers for the inlet
-   vdbc_bdr_outlet = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the boundary markers for the outlet
    pdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
    tdbc_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
-   tdbc_bdr_inlet = mfem::Array<int>(mesh->bdr_attributes.Max());   // to select only the boundary markers for the inlet
-   tdbc_bdr_walls= mfem::Array<int> (mesh->bdr_attributes.Max());   // to select only the boundary markers for the walls
    vdummy_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
    pdummy_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
    tdummy_bdr = mfem::Array<int>(mesh->bdr_attributes.Max()); // contains the whole boundary markers
-   
-   // for poiseuille flow 
+
+   //set marker
+   // velocity
    vdbc_bdr = 0;
-   // the boundary for the noslip condition
+   vdbc_bdr_all = 0;
    vdbc_bdr_noslip = 0;
-   // the boundary at the inlet
-   vdbc_bdr_inlet = 0;
-   // the boundary at the outlet
-   vdbc_bdr_outlet = 0;
 
    // pressure
    pdbc_bdr = 0;
 
    // temperature
    tdbc_bdr = 0;
-   tdbc_bdr_inlet = 0;
-   tdbc_bdr_walls = 0;
 
    // mark dummy
    vdummy_bdr = 0;
    pdummy_bdr = 0;
    tdummy_bdr = 0;
 
-
    // get the true dofs of the boundaries
    vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list);
-   vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list_outlet);
    pfes->GetEssentialTrueDofs(pdbc_bdr, pres_ess_tdof_list);   
-   tfes->GetEssentialTrueDofs(tdbc_bdr, temp_ess_tdof_list);   
-
+   tfes->GetEssentialTrueDofs(tdbc_bdr, temp_ess_tdof_list);
    vfes->GetEssentialTrueDofs(vdummy_bdr, vel_ess_tdof_list_dummy);
    pfes->GetEssentialTrueDofs(pdummy_bdr, pres_ess_tdof_list_dummy);   
    tfes->GetEssentialTrueDofs(tdummy_bdr, temp_ess_tdof_list_dummy);
 
-   // NEED TO BE CHANGED!!!!
-   // BOUNDARY SETTINGS SHOULD WORK WITH AN CLASS THAT CAN BE DELIVERED
-
-   // for poiseuille flow 
-   // mark all used boundary attributes for velocity
-   // couette
-   //vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1;
-   // poiseuille
-   vdbc_bdr = 0; vdbc_bdr[2] = 1; vdbc_bdr[0] = 1; vdbc_bdr[3] = 1;
-   // cavity
-   //vdbc_bdr = 1;
-
-   // the boundary attribute 0 and 2 is used for the noslip condition
-   vdbc_bdr_noslip = 0; vdbc_bdr_noslip[2] = 1; vdbc_bdr_noslip[0] = 1; //not needed if already above marked 
-   // the boundary attribute 3 is used for a constant velocity at the inlet
-   // couette
-   //vdbc_bdr_inlet = 0; vdbc_bdr_inlet[2] = 1;
-   // poiseuille
-   vdbc_bdr_inlet = 0; vdbc_bdr_inlet[3] = 1;
-   // cavity
-   //vdbc_bdr_inlet = 0; vdbc_bdr_inlet[2] = 1;
+   for (size_t i = 0; i < user_vdbc_bdr_noslip.Size(); i++)
+   {
+      vdbc_bdr_all[user_vdbc_bdr_noslip[i]-1] = 1;
+      vdbc_bdr_noslip[user_vdbc_bdr_noslip[i]-1] = 1;
+      //std::cout << user_vdbc_bdr_noslip[i]-1 << " set velocity no slip \n";
+   }
+   for (size_t i = 0; i < user_vdbc_bdr.Size(); i++)
+   {
+      vdbc_bdr_all[user_vdbc_bdr[i]-1] = 1;
+      vdbc_bdr[user_vdbc_bdr[i]-1] = 1;
+   }
+   for (size_t i = 0; i < user_pdbc_bdr.Size(); i++)
+   {
+      pdbc_bdr[user_pdbc_bdr[i]-1] = 1;
+   }
+   for (size_t i = 0; i < user_tdbc_bdr.Size(); i++)
+   {
+      tdbc_bdr[user_tdbc_bdr[i]-1] = 1;
+   }
    
-
-   vdbc_bdr_outlet = 0; vdbc_bdr_outlet[1] = 1; 
-   
-   // mark all used boundary attributes for pressure
-   pdbc_bdr = 0; pdbc_bdr[1] = 0;
-
-   // temperature
-   // mark all used boundary attributes for temperature
-   tdbc_bdr = 0; tdbc_bdr[2] = 1; tdbc_bdr[3] = 1; tdbc_bdr[0] = 1;
-   tdbc_bdr_inlet = 0; tdbc_bdr_inlet[3] = 1;
-   tdbc_bdr_walls = 0; tdbc_bdr_walls[2] = 1; tdbc_bdr_walls[0] = 1;
-
    // get the true dofs of the boundaries
-   vfes->GetEssentialTrueDofs(vdbc_bdr, vel_ess_tdof_list);
-   vfes->GetEssentialTrueDofs(vdbc_bdr_outlet, vel_ess_tdof_list_outlet);
+   vfes->GetEssentialTrueDofs(vdbc_bdr_all, vel_ess_tdof_list);
    pfes->GetEssentialTrueDofs(pdbc_bdr, pres_ess_tdof_list);   
-   tfes->GetEssentialTrueDofs(tdbc_bdr, temp_ess_tdof_list); 
+   tfes->GetEssentialTrueDofs(tdbc_bdr, temp_ess_tdof_list);
 
    return true;
 }
@@ -240,67 +219,34 @@ bool NurbsStokesSolver::set_order_elevation_temperature(int elevationorder)
    return true;
 }
 
-bool NurbsStokesSolver::set_dirichletbc_velocity_noslip(std::vector<int> boundary_marker)
+bool NurbsStokesSolver::set_dirichletbc_velocity_noslip(mfem::Array<int> boundaries)
 {
-   for (size_t i = 0; i < boundary_marker.size(); i++)
-   {  
-      if (boundary_marker[i]==1)
-      {  
-         vdbc_bdr[i] = boundary_marker[i];
-         vdbc_bdr_noslip[i] = boundary_marker[i];
-      }
-   }
+   user_vdbc_bdr_noslip = boundaries;
+   
    return true;
 }
 
-bool NurbsStokesSolver::set_dirichletbc_velocity_inlet(std::vector<int> boundary_marker)
+bool NurbsStokesSolver::set_dirichletbc_velocity(mfem::Array<int> boundaries,mfem::Vector boundaries_values)
 {
-   for (size_t i = 0; i < boundary_marker.size(); i++)
-   {  
-      if (boundary_marker[i]==1)
-      {  
-         vdbc_bdr[i] = boundary_marker[i];
-         vdbc_bdr_inlet[i] = boundary_marker[i];
-      }
-   }
+   user_vdbc_bdr = boundaries;
+   user_vdbc_bdr_values = boundaries_values;
+   
    return true;
 }
 
-bool NurbsStokesSolver::set_dirichletbc_pressure(std::vector<int> boundary_marker)
+bool NurbsStokesSolver::set_dirichletbc_pressure(mfem::Array<int> boundaries,mfem::Vector boundaries_values)
 {
-   for (size_t i = 0; i < boundary_marker.size(); i++)
-   {  
-      if (boundary_marker[i]==1)
-      {  
-         pdbc_bdr[i] = boundary_marker[i];
-      }
-   }
+   user_pdbc_bdr = boundaries;
+   user_pdbc_bdr_values = boundaries_values;
+   
    return true;
 }
    
-bool NurbsStokesSolver::set_dirichletbc_temperature_inlet(std::vector<int> boundary_marker)
+bool NurbsStokesSolver::set_dirichletbc_temperature(mfem::Array<int> boundaries,mfem::Vector boundaries_values)
 {
-   for (size_t i = 0; i < boundary_marker.size(); i++)
-   {  
-      if (boundary_marker[i]==1)
-      {  
-         tdbc_bdr[i] = boundary_marker[i];
-         tdbc_bdr_inlet[i] = boundary_marker[i];
-      }
-   }
-   return true;
-}
+   user_tdbc_bdr = boundaries;
+   user_tdbc_bdr_values = boundaries_values;
 
-bool NurbsStokesSolver::set_dirichletbc_temperature_walls(std::vector<int> boundary_marker)
-{
-   for (size_t i = 0; i < boundary_marker.size(); i++)
-   {  
-      if (boundary_marker[i]==1)
-      {  
-         tdbc_bdr[i] = boundary_marker[i];
-         tdbc_bdr_walls[i] = boundary_marker[i];
-      }
-   }
    return true;
 }
 
@@ -309,7 +255,7 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    auto lambda_inlet = [this](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
    {
       double h=1;
-      VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
+      VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*28;
       //VelocityValue[0] = v_max;
       //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
       VelocityValue[1] = 0;
@@ -334,43 +280,109 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
+
+   // create vectors for coefficients and boundary markers
+
+   std::vector<mfem::Array<int>> vdbc_bdr_marker;
+   std::vector<mfem::Vector> vdbc_bdr_vector;
+   std::vector<mfem::VectorConstantCoefficient> vdbc_bdr_vectorcoefficient;
+
+   for (size_t i = 0; i < user_vdbc_bdr.Size(); i++)
+   {
+      vdbc_bdr_marker.push_back(mfem::Array<int>(mesh->bdr_attributes.Max()));
+      vdbc_bdr_marker[i] = 0;
+      vdbc_bdr_marker[i][user_vdbc_bdr[i]-1] = 1;
+
+      mfem::Vector vvector(sdim);
+      vdbc_bdr_vector.push_back(vvector);
+      vdbc_bdr_vector[i] = 0.;
+      for (size_t ii = 0; ii < sdim; ii++)
+      {
+         vdbc_bdr_vector[i][ii] = user_vdbc_bdr_values[i*sdim+ii];
+         //std::cout << user_vdbc_bdr_values[i*sdim+ii] << " velocity values \n";
+      }
+      mfem::VectorConstantCoefficient vcc(vdbc_bdr_vector[i]);
+      vdbc_bdr_vectorcoefficient.push_back(vcc);
+   }
    
+   std::vector<mfem::Array<int>> pdbc_bdr_marker;
+   std::vector<mfem::ConstantCoefficient> pdbc_bdr_coefficient;
+
+   for (size_t i = 0; i < user_pdbc_bdr.Size(); i++)
+   {
+      pdbc_bdr_marker.push_back(mfem::Array<int>(mesh->bdr_attributes.Max()));
+      pdbc_bdr_marker[i] = 0;
+      pdbc_bdr_marker[i][user_pdbc_bdr[i]-1] = 1;
+
+      mfem::ConstantCoefficient cc(user_pdbc_bdr_values[i]);
+      pdbc_bdr_coefficient.push_back(cc);
+      //std::cout << user_pdbc_bdr_values[i] << " pressure values \n";
+   }
+
+   std::vector<mfem::Array<int>> tdbc_bdr_marker;
+   std::vector<mfem::ConstantCoefficient> tdbc_bdr_coefficient;
+
+   for (size_t i = 0; i < user_tdbc_bdr.Size(); i++)
+   {
+      tdbc_bdr_marker.push_back(mfem::Array<int>(mesh->bdr_attributes.Max()));
+      tdbc_bdr_marker[i] = 0;
+      tdbc_bdr_marker[i][user_tdbc_bdr[i]-1] = 1;
+
+      mfem::ConstantCoefficient cc(user_tdbc_bdr_values[i]);
+      tdbc_bdr_coefficient.push_back(cc);
+      //std::cout << user_tdbc_bdr_values[i] << " temperature values \n";
+   }
+
    // VELOCITY
    // define rhs with the desired boundary condition values
    mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet); // function for our desired boundary condition
    //mfem::FunctionCoefficient vfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *f_bc(new mfem::LinearForm(vfes)); // define linear form for rhs
-   f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
-   //f_bc->AddBoundaryIntegrator(new mfem::BoundaryNormalLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
-   f_bc->Assemble(); // assemble the linear form (vector)
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm a_bc(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
-   a_bc.AddBoundaryIntegrator(new mfem::VectorMassIntegrator(One_bc),vdbc_bdr_inlet); // bilinear form (lambda*u_vector),(v_vector))
+   //f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr); // define integrator on desired boundary
+   for (size_t i = 0; i < vdbc_bdr_marker.size(); i++)
+   {
+      f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vdbc_bdr_vectorcoefficient[i]),vdbc_bdr_marker[i]); // define integrator on desired boundary
+      //f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr_marker[i]); // define integrator on desired boundary
+      //std::cout << user_vdbc_bdr[i] << " velocity boundary \n";
+      a_bc.AddBoundaryIntegrator(new mfem::VectorMassIntegrator(One_bc),vdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+   }
+   //f_bc->AddBoundaryIntegrator(new mfem::BoundaryNormalLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
+   f_bc->Assemble(); // assemble the linear form (vector)
    a_bc.Assemble(); // assemble the bilinear form (matrix)
    
    // PRESSURE
    // define rhs with the desired boundary condition values
-   mfem::ConstantCoefficient pfc_outlet(p_val); // function for our desired boundary condition
+   //mfem::ConstantCoefficient pfc_outlet(p_val); // function for our desired boundary condition
    mfem::LinearForm *g_bc(new mfem::LinearForm(pfes)); // define linear form for rhs
-   g_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(pfc_outlet),pdbc_bdr); // define integrator on desired boundary
-   g_bc->Assemble(); // assemble the linear form (vector)
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm b_bc(pfes); // define the bilinear form results in n x n matrix, we use the pressure finite element space
-   b_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),pdbc_bdr); // bilinear form (lambda*u_vector),(v_vector))
+   //g_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(pfc_outlet),pdbc_bdr); // define integrator on desired boundary
+   for (size_t i = 0; i < pdbc_bdr_marker.size(); i++)
+   {
+      g_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(pdbc_bdr_coefficient[i]),pdbc_bdr_marker[i]); // define integrator on desired boundary
+      b_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),pdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+   }
+   g_bc->Assemble(); // assemble the linear form (vector)
    b_bc.Assemble(); // assemble the bilinear form (matrix)
 
    // TEMPERATURE
    // define rhs with the desired boundary condition values
-   mfem::ConstantCoefficient tfc_inlet(temp_1); // function for our desired boundary condition
-   mfem::ConstantCoefficient tfc_walls(temp_2); // function for our desired boundary condition
+   //mfem::ConstantCoefficient tfc_inlet(temp_1); // function for our desired boundary condition
+   //mfem::ConstantCoefficient tfc_walls(temp_2); // function for our desired boundary condition
    mfem::LinearForm *h_bc(new mfem::LinearForm(tfes)); // define linear form for rhs
-   h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_inlet),tdbc_bdr_inlet); // define integrator on desired boundary
-   h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_walls),tdbc_bdr_walls); // define integrator on desired boundary
-   h_bc->Assemble(); // assemble the linear form (vector)
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm d_bc(tfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
-   d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tdbc_bdr); // bilinear form (lambda*u_vector),(v_vector))
+   //h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_inlet),tdbc_bdr); // define integrator on desired boundary
+   //h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_walls),tdbc_bdr); // define integrator on desired boundary
+   for (size_t i = 0; i < tdbc_bdr_marker.size(); i++)
+   {
+      h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tdbc_bdr_coefficient[i]),tdbc_bdr_marker[i]); // define integrator on desired boundary
+      d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+   }
+   h_bc->Assemble(); // assemble the linear form (vector)   
    d_bc.Assemble(); // assemble the bilinear form (matrix)
 
    mfem::SparseMatrix A_BC, B_BC, D_BC;
@@ -384,6 +396,51 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d_bc.FormLinearSystem(temp_ess_tdof_list_dummy, t_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
    
+   /*
+   for (size_t i = 0; i < F_BC.Size(); i++)
+   {
+      std::cout << F_BC[i] << " F_BC \n";
+   }
+
+   for (size_t i = 0; i < G_BC.Size(); i++)
+   {
+      std::cout << G_BC[i] << " G_BC \n";
+   }
+
+   for (size_t i = 0; i < H_BC.Size(); i++)
+   {
+      std::cout << H_BC[i] << " H_BC \n";
+   }
+   *//*
+   for (size_t i = 0; i < vdbc_bdr_marker.size(); i++)
+   {
+      std::cout << user_vdbc_bdr[i] << " user_vdbc_bdr \n";
+      for (size_t ii = 0; ii < vdbc_bdr_marker[i].Size(); ii++)
+      {
+         std::cout << vdbc_bdr_marker[i][ii] << " boundary " << ii << " vdbc_bdr_marker \n";
+      }
+   }
+   for (size_t i = 0; i < pdbc_bdr_marker.size(); i++)
+   {
+      std::cout << user_pdbc_bdr[i] << " user_pdbc_bdr \n";
+      for (size_t ii = 0; ii < pdbc_bdr_marker[i].Size(); ii++)
+      {
+         std::cout << pdbc_bdr_marker[i][ii] << " boundary " << ii << " pdbc_bdr_marker \n";
+      }
+   }
+   for (size_t i = 0; i < tdbc_bdr_marker.size(); i++)
+   {
+      std::cout << user_tdbc_bdr[i] << " user_tdbc_bdr \n";
+      for (size_t ii = 0; ii < tdbc_bdr_marker[i].Size(); ii++)
+      {
+         std::cout << tdbc_bdr_marker[i][ii] << " boundary " << ii << " tdbc_bdr_marker \n";
+      }
+   }
+   */
+
+   //A_BC.PrintMatlab();
+   //B_BC.PrintMatlab();
+   //D_BC.PrintMatlab();
 
    // SOLVER
    // setup solver
@@ -589,7 +646,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    mfem::LinearForm *f(new mfem::LinearForm); // define linear form for rhs
    f->Update(vfes, rhs_flow.GetBlock(0),0);  // link to block vector and use the velocity finite element space
    f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
-   f->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vccpressure), vdbc_bdr_outlet);
+   //f->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vccpressure), vdbc_bdr);
    f->Assemble(); // assemble the linear form (vector)
    
    // rhs for continuity equation
