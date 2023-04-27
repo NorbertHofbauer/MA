@@ -605,12 +605,14 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    block_offsets[2] = pfes->GetVSize();
    block_offsets.PartialSum();
 
+   /*
    std::cout << "***********************************************************\n";
    std::cout << "dim(v) = " << block_offsets[1] - block_offsets[0] << "\n";
    std::cout << "dim(p) = " << block_offsets[2] - block_offsets[1] << "\n";
    std::cout << "dim(v+p) = " << block_offsets.Last() << "\n";
    std::cout << "dim(t) = " << tfes->GetVSize() << "\n";
    std::cout << "***********************************************************\n" << std::endl;
+   */
 
    mfem::BlockVector x_flow(block_offsets), rhs_flow(block_offsets); // blockvector for gridfunctions and our rhs
       /*
@@ -749,17 +751,17 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // check if solver converged
    if (solver.GetConverged())
    {
-      std::cout << "MINRES converged in " << solver.GetNumIterations()
+      std::cout << "GMRESSolver converged in " << solver.GetNumIterations()
                 << " iterations with a residual norm of "
                 << solver.GetFinalNorm() << ".\n";
    }
    else
    {
-      std::cout << "MINRES did not converge in " << solver.GetNumIterations()
+      std::cout << "GMRESSolver did not converge in " << solver.GetNumIterations()
                 << " iterations. Residual norm is " << solver.GetFinalNorm()
                 << ".\n";
    }
-   std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
+   std::cout << "GMRESSolver solver took " << chrono.RealTime() << "s.\n";
 
    // Save the mesh and the solution
    {
@@ -868,17 +870,17 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc(mfem::GridFunction &v0, 
    // check if solver converged
    if (solver.GetConverged())
    {
-      std::cout << "MINRES converged in " << solver.GetNumIterations()
+      std::cout << "GMRESSolver converged in " << solver.GetNumIterations()
                 << " iterations with a residual norm of "
-                << solver.GetFinalNorm() << ".\n";
+                << solver.GetFinalNorm() << " .\n";
    }
    else
    {
-      std::cout << "MINRES did not converge in " << solver.GetNumIterations()
+      std::cout << "GMRESSolver did not converge in " << solver.GetNumIterations()
                 << " iterations. Residual norm is " << solver.GetFinalNorm()
                 << ".\n";
    }
-   std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
+   std::cout << "GMRESSolver solver took " << chrono.RealTime() << "s.\n";
 
    // Save the mesh and the solution
    {
