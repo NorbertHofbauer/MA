@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
    int vis_model = 1;         // type of the viscosity model
    // 1 Carreau
    mfem::Vector model_parameters; // array to get the model parameters
+   double relaxation = 1;
    int ref_levels = 0;              // standard number of refinements for the mesh
    int maxIter = 5000;
    int maxIter2 = 10;
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
    mfem::Array<int> tdbc_bdr;
    mfem::Vector tdbc_bdr_values;
 
-   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '28 5.5 -10' -vm 1 -d 1 -tdc -0.1 -mp '6500 0.13 0.725' -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2
+   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '28 5.5 -10' -vm 1 -d 1 -tdc -0.1 -mp '6500 0.13 0.725' -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2 -rel 1
 
 
 
@@ -77,6 +78,8 @@ int main(int argc, char *argv[])
                   "the order of the elevation for temperature. e.g. -oet 1");
    args.AddOption(&density, "-d", "--density", 
                   "fluid density. e.g. -d 1000",true);
+   args.AddOption(&relaxation, "-rel", "--relaxation", 
+                  "Relaxation for outer loop. e.g. -rel 0.5");
    args.AddOption(&temp_diffusion_const, "-tdc", "--temp_diffusion_constant", 
                   "temperature diffusion constant. e.g. -tdc 1000",true);
    args.AddOption(&maxIter, "-mi", "--maxIteration", 
@@ -130,17 +133,22 @@ int main(int argc, char *argv[])
 
    nssolver.init();
 
+   mfem::GridFunction vr(nssolver.vfes),pr(nssolver.pfes),tr(nssolver.tfes);
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),t0(nssolver.tfes),v(nssolver.vfes),p(nssolver.pfes),t(nssolver.tfes);
    nssolver.visualization = 0;
    nssolver.calc_dirichletbc(v0,p0,t0);
    nssolver.visualization = 0;
    
+   vr = v0;
+   pr = p0;
+   tr = t0;
+
    //for (size_t i = 0; i < 28; i++)
    int iter=0;
    while ((v_error_norm_l2>max_error)||(p_error_norm_l2>max_error)||(t_error_norm_l2>max_error))
    {  
       iter+=1;
-      if ((iter==1)|(iter==maxIter2))
+      if ((iter==-1)|(iter==maxIter2))
       {
          nssolver.visualization = 1;
       }
@@ -159,18 +167,39 @@ int main(int argc, char *argv[])
          MFEM_ASSERT(false, "Viscosity Model not available!");
       }
 
-      v0 = v;
-      p0 = p;
+      //v0 = (1-relaxation)*vr + relaxation*v;
+      //p0 = (1-relaxation)*tr + relaxation*p;
+      //v0 = v;
+      //p0 = p;
+
+      for (size_t i = 0; i < vr.Size(); i++)
+      {
+         v0[i] = (1-relaxation)*vr[i] + relaxation*v[i];
+      }
+      for (size_t i = 0; i < pr.Size(); i++)
+      {
+         p0[i] = (1-relaxation)*pr[i] + relaxation*p[i];
+      }
+
+      vr = v0;
+      pr = p0;
 
       nssolver.visualization = 0;
-      if ((iter==1)|(iter==maxIter2))
+      if ((iter==-1)|(iter==maxIter2))
       {
          nssolver.visualization = 1;
       }
       nssolver.solve_temperature(v0,t0,v,t);
       nssolver.visualization = 0;
       //v = v0;
-      t0 = t;
+      
+      for (size_t i = 0; i < tr.Size(); i++)
+      {
+         t0[i] = (1-relaxation)*tr[i] + relaxation*t[i];
+      }
+      //t0 = t;
+      tr = t0;
+      
 
       v_error_norm_l2 = std::abs(v_error_norm_l2 - v0.Norml2());
       p_error_norm_l2 = std::abs(p_error_norm_l2 - p0.Norml2());
