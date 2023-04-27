@@ -584,7 +584,6 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::GridFunction &v0, mfem::GridFunct
    zerovector = 0.0;
    mfem::VectorConstantCoefficient zero(zerovector);
    v_bc.ProjectBdrCoefficient(zero,vdbc_bdr_noslip);
-   //
 
    v0=v_bc;
    p0=p_bc;
@@ -666,13 +665,32 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    
    // chose viscosity model
    CarreauModelCoefficient* temp_kin_vis_carreau;
+   CarreauWLFModelCoefficient* temp_kin_vis_carreauwlf;
+   PowerLawModelCoefficient* temp_kin_vis_powerlaw;
+   
    if (temp_kin_vis_carreau = dynamic_cast<CarreauModelCoefficient*>(&kin_vis))
    {
       CarreauModelCoefficient kin_vis_carreau = *temp_kin_vis_carreau;
       kin_vis_carreau.SetVelocity(v0);
       a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis_carreau, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
       a.Assemble();
-   }else{
+   }else if (temp_kin_vis_carreauwlf = dynamic_cast<CarreauWLFModelCoefficient*>(&kin_vis))
+   {
+      CarreauWLFModelCoefficient kin_vis_carreauwlf = *temp_kin_vis_carreauwlf;
+      kin_vis_carreauwlf.SetVelocity(v0);
+      kin_vis_carreauwlf.SetTemperature(t0);
+      a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis_carreauwlf, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+      a.Assemble();
+   }
+   else if (temp_kin_vis_powerlaw = dynamic_cast<PowerLawModelCoefficient*>(&kin_vis))
+   {
+      PowerLawModelCoefficient kin_vis_powerlaw = *temp_kin_vis_powerlaw;
+      kin_vis_powerlaw.SetVelocity(v0);
+      kin_vis_powerlaw.SetTemperature(t0);
+      a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis_powerlaw, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
+      a.Assemble();
+   }
+   else{
       a.AddDomainIntegrator(new mfem::VectorDiffusionIntegrator(kin_vis, sdim)); // bilinear form (lambda*nabla(u_vector),nabla(v_vector))
       a.Assemble();
    }

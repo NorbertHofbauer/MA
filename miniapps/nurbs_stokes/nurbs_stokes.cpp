@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 {
    // Setup
    // we define the standard values for our boundaries, equation constants and the meshfile
-   double density = 2;    // value for density
+   double density = 1;    // value for density
    double temp_diffusion_const = 0.1;
    const char *mesh_file = "../../../MA/data/quad_lin_nurbs.mesh";  //our standard test mesh
    int vis_model = 1;         // type of the viscosity model
@@ -51,10 +51,12 @@ int main(int argc, char *argv[])
    mfem::Vector pdbc_bdr_values;
    mfem::Array<int> tdbc_bdr;
    mfem::Vector tdbc_bdr_values;
-
-   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '28 5.5 -10' -vm 1 -d 1 -tdc -0.1 -mp '6500 0.13 0.725' -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2 -rel 1
-
-
+   double init_temp;
+   
+   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vm 0 -mp '205.9'  -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '28 5.5 -10' -d 1 -tdc -0.1 -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2 -rel 1
+   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vm 1 -mp '1777 0.064 0.73'  -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '28 5.5 -10' -d 1 -tdc -0.1 -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2 -rel 1
+   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vm 2 -mp '1777 0.064 0.73 200 123'  -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '220 220 220' -d 1 -tdc -0.1 -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2 -rel 1
+   //./nurbs_stokes -m ../../../MA/data/quad_lin_nurbs.mesh -r 3 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 3' -vdbc '4' -vdbc_values '28.5 0' -pdbc '2' -pdbc_values '10' -tdbc '1 3 4' -tdbc_values '220 220 220' -d 1 -tdc -0.1 -mi 10000 -mi2 10 -oev 2 -oep 1 -oet 2 -rel 1
 
    // Parse command-line options.
    // input options for our executable
@@ -67,7 +69,12 @@ int main(int argc, char *argv[])
                   "--no-visualization",
                   "Enable or disable GLVis visualization.");
    args.AddOption(&vis_model, "-vm", "--viscosityModel", 
-                  "Choose viscosity Model e.g. -vm 1 \n Available Models: 1 Carreau, Parameters A,B,C",true);
+                  "Choose viscosity Model e.g. -vm 1 \n "
+                  "Available Models: "
+                  "0 No Model, Parameters dynamic viscosity"
+                  "1 Carreau, Parameters k1,k2,k3"
+                  "2 CarreauWLF, Parameters k1,k2,k3,k4,k5"
+                  "3 PowerLaw, Parameters m0,n,a,T0,shearrate0",true);
    args.AddOption(&model_parameters, "-mp", "--modelParameters", 
                   " e.g. -mp 1 2 6",true);
    args.AddOption(&orderelevationvelocity, "-oev", "--orderelevationvelocity", 
@@ -138,7 +145,7 @@ int main(int argc, char *argv[])
    nssolver.visualization = 0;
    nssolver.calc_dirichletbc(v0,p0,t0);
    nssolver.visualization = 0;
-   
+
    vr = v0;
    pr = p0;
    tr = t0;
@@ -158,10 +165,48 @@ int main(int argc, char *argv[])
       t_error_norm_l2 = t0.Norml2();
 
       // viscosity model - must be a mfem::coefficient or a child class from coefficient
-      if (vis_model==1)
+      if (vis_model==0)
       {
-         MFEM_ASSERT(model_parameters.Size() == 3, "Carreau Model needs 3 Parameters A,B,C!");
+         MFEM_ASSERT(model_parameters.Size() == 1, "1 Parameter needed dynamic viscosity!");
+         mfem::ConstantCoefficient kin_vis(model_parameters[0]/density);
+         nssolver.solve_flow(v0,p0,t0,v,p,t,kin_vis);
+      }else if (vis_model==1)
+      {
+         MFEM_ASSERT(model_parameters.Size() == 3, "Carreau Model needs 3 Parameters k1,k2,k3!");
          CarreauModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2], density);
+         nssolver.solve_flow(v0,p0,t0,v,p,t,kin_vis);
+      }else if (vis_model==2)
+      {
+         MFEM_ASSERT(model_parameters.Size() == 5, "CarreauWLF Model needs 3 Parameters k1,k2,k3,k4,k5!");
+         CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
+         //set reference temperature on first iteration, otherwise model crashes
+         if (iter==1)
+         {
+            for (size_t i = 0; i < t0.Size(); i++)
+            {
+               if (t0[i] == 0)
+               {
+                  t0[i] = model_parameters[3];
+               }
+               //std::cout <<  t0[i] << " t0 \n";
+            }
+         }
+         nssolver.solve_flow(v0,p0,t0,v,p,t,kin_vis);
+      }else if (vis_model==3)
+      {
+         MFEM_ASSERT(model_parameters.Size() == 5, "PowerLaw Model needs 4 Parameters m0,n,a,T0,shearrate0!");
+         PowerLawModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
+         if (iter==1)
+         {
+            for (size_t i = 0; i < t0.Size(); i++)
+            {
+               if (t0[i] == 0)
+               {
+                  t0[i] = model_parameters[3];
+               }
+               //std::cout <<  t0[i] << " t0 \n";
+            }
+         }
          nssolver.solve_flow(v0,p0,t0,v,p,t,kin_vis);
       }else{
          MFEM_ASSERT(false, "Viscosity Model not available!");
