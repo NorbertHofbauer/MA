@@ -24,3 +24,12 @@ if (MFEM_ENABLE_TESTING)
 #    -m ${PROJECT_SOURCE_DIR}/mesh/pipe-nurbs-boundary-test_2.mesh)
 endif()
 
+if (MFEM_USE_MPI)
+  add_mfem_miniapp(nurbs_stokesp
+  MAIN nurbs_stokesp.cpp
+  nurbs_stokes_solverp.cpp
+  nurbs_stokes_solverp.hpp
+  viscosity_modelsp.cpp
+  viscosity_modelsp.hpp
+  LIBRARIES mfem)
+endif()

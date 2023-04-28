@@ -70,7 +70,7 @@ bool NurbsStokesSolver::init()
       // declaration for our finite element spaces
       vfes = new mfem::FiniteElementSpace(mesh, vNURBSext, vfec, sdim); // velocity finite element space, with dimension sdim
       pfes = new mfem::FiniteElementSpace(mesh, pNURBSext, pfec);  // pressure finite element space, with dimension 1 (scalar field)
-      tfes = new mfem::FiniteElementSpace(mesh, pNURBSext, tfec);  // temperature finite element space, with dimension 1 (scalar field)
+      tfes = new mfem::FiniteElementSpace(mesh, tNURBSext, tfec);  // temperature finite element space, with dimension 1 (scalar field)
       std::cout << "vfes velocity finite element space Order " << vfes->GetMaxElementOrder() << std::endl;
       std::cout << "pfes pressure finite element space Order " << pfes->GetMaxElementOrder() << std::endl;
       std::cout << "tfes temperature finite element space Order " << tfes->GetMaxElementOrder() << std::endl;
