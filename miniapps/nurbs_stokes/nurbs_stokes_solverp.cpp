@@ -64,7 +64,7 @@ bool NurbsStokesSolver::init()
       std::cout << "given Order elevation velocity " << order[1] << std::endl;
       std::cout << "given Order elevation pressure " << order[2] << std::endl;
       std::cout << "given Order elevation temperature " << order[3] << std::endl;
-      std::cout << " bdr attributes " << pmesh->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
+      std::cout << "number of bdr attributes " << pmesh->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
       }
       // fe collections
       vfec = new mfem::NURBSFECollection(order[0] + order[1]); // Pm+n
@@ -80,25 +80,28 @@ bool NurbsStokesSolver::init()
       vNURBSext = new mfem::NURBSExtension(pmesh->NURBSext, order[0]+order[1]);
       pNURBSext = new mfem::NURBSExtension(pmesh->NURBSext, order[0]+order[2]);
       tNURBSext = new mfem::NURBSExtension(pmesh->NURBSext, order[0]+order[3]);
-      
+
       // declaration for our finite element spaces
       vfes = new mfem::ParFiniteElementSpace(pmesh, vNURBSext, vfec, sdim); // velocity finite element space, with dimension sdim
       pfes = new mfem::ParFiniteElementSpace(pmesh, pNURBSext, pfec);  // pressure finite element space, with dimension 1 (scalar field)
       tfes = new mfem::ParFiniteElementSpace(pmesh, tNURBSext, tfec);  // temperature finite element space, with dimension 1 (scalar field)
       
+      HYPRE_BigInt vsize = vfes->GlobalTrueVSize();
+      HYPRE_BigInt psize = pfes->GlobalTrueVSize();
+      HYPRE_BigInt tsize = tfes->GlobalTrueVSize();
       if (myid == 0)
       {
       std::cout << "vfes velocity finite element space Order " << vfes->GetMaxElementOrder() << std::endl;
       std::cout << "pfes pressure finite element space Order " << pfes->GetMaxElementOrder() << std::endl;
       std::cout << "tfes temperature finite element space Order " << tfes->GetMaxElementOrder() << std::endl;
+      std::cout << " Number of finite element unknowns vfes: "
+      << vsize << std::endl;
+      std::cout << " Number of finite element unknowns pfes: "
+      << psize << std::endl;
+      std::cout << " Number of finite element unknowns tfes: "
+      << tsize << std::endl;
       }
-      std::cout << "Rank " << myid << " Number of finite element unknowns vfes: "
-      << vfes->GetTrueVSize() << std::endl;
-      std::cout << "Rank " << myid << " Number of finite element unknowns pfes: "
-      << pfes->GetTrueVSize() << std::endl;
-      std::cout << "Rank " << myid << " Number of finite element unknowns tfes: "
-      << tfes->GetTrueVSize() << std::endl;
-      
+
       // init the dirichlet bc
       this->init_dirichletbc();
 
@@ -478,12 +481,12 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::ParGridFunction &v0, mfem::ParGri
    //mfem::Solver *bc_prec;
    //bc_prec = new mfem::GSSmoother();
    //bc_solver.SetPreconditioner(*bc_prec);
-   //mfem::HypreGMRES bc_solver(MPI_COMM_WORLD);
-   mfem::GMRESSolver bc_solver(MPI_COMM_WORLD);
+   mfem::HypreGMRES bc_solver(MPI_COMM_WORLD);
+   //mfem::GMRESSolver bc_solver(MPI_COMM_WORLD);
    
    bc_solver.SetAbsTol(atol);
-   //bc_solver.SetTol(rtol);
-   bc_solver.SetRelTol(rtol);
+   bc_solver.SetTol(rtol);
+   //bc_solver.SetRelTol(rtol);
    bc_solver.SetMaxIter(maxIter);
    bc_solver.SetOperator(A_BC);
    bc_solver.SetKDim((int)maxIter/5);

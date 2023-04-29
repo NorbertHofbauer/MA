@@ -54,7 +54,7 @@ bool NurbsStokesSolver::init()
       std::cout << "given Order elevation velocity " << order[1] << std::endl;
       std::cout << "given Order elevation pressure " << order[2] << std::endl;
       std::cout << "given Order elevation temperature " << order[3] << std::endl;
-      std::cout << " bdr attributes " << mesh->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
+      std::cout << "number of bdr attributes " << mesh->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
       // fe collections
       vfec = new mfem::NURBSFECollection(order[0] + order[1]); // Pm+n
       pfec = new mfem::NURBSFECollection(order[0] + order[2]); // Pm+n
