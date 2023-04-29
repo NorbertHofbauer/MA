@@ -463,7 +463,7 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::ParGridFunction &v0, mfem::ParGri
    }
    */
 
-   //A_BC.PrintMatlab();
+   //A_BC.Print("asdasd");
    //B_BC.PrintMatlab();
    //D_BC.PrintMatlab();
 
@@ -600,7 +600,7 @@ bool NurbsStokesSolver::calc_dirichletbc(mfem::ParGridFunction &v0, mfem::ParGri
    v0=v_bc;
    p0=p_bc;
    t0=t_bc;
-
+   
    return true;
 }
 
@@ -738,13 +738,24 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem:
    a->FormLinearSystem(vel_ess_tdof_list, v0, *f, A, V, F); // form A   
    b->FormRectangularLinearSystem(pres_ess_tdof_list_dummy, vel_ess_tdof_list, p0, *f, B, P, F); // form B
    c->FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list_dummy, v0, *g, C, V, G); // form C
-
+   /*
    mfem::BlockOperator *stokesOp = new mfem::BlockOperator(block_offsets); // Block operator to build our System for the solver
 
    stokesOp->SetBlock(0,0,&A);
    stokesOp->SetBlock(0,1,&B);
    stokesOp->SetBlock(1,0,&C);
+   */
+   mfem::Array2D<mfem::HypreParMatrix*> stokesOp(2,2);
+   stokesOp = NULL;
+   stokesOp(0, 0) = &A;
+   stokesOp(0, 1) = &B;
+   stokesOp(1, 0) = &C;
    
+   mfem::Array2D<double> blockCoeff(2,2);
+   blockCoeff = 1.0;
+   mfem::HypreParMatrix *SO = mfem::HypreParMatrixFromBlocks(stokesOp, &blockCoeff);
+
+
    //mfem::TransposeOperator *Bt = NULL;
    //Bt = new mfem::TransposeOperator(&B);
    //stokesOp.SetBlock(1,0,Bt);
@@ -755,7 +766,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem:
    
    // SOLVER
    // setup solver
-   /*
+   
    // setup minres solver, should be enough for our linear system
    // without preconditioning
    //mfem::MINRESSolver solver; 
@@ -764,7 +775,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem:
    solver.SetAbsTol(atol);
    solver.SetTol(rtol);
    solver.SetMaxIter(maxIter);
-   solver.SetOperator(*stokesOp);
+   solver.SetOperator(*SO);
    solver.SetKDim((int)maxIter/5);
    solver.SetPrintLevel(3);
    
@@ -772,15 +783,17 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem:
    //std::cout << rhs_flow.BlockSize(1)  <<"\n";
    //std::cout << x_flow.BlockSize(0)  <<"\n";
    //std::cout << x_flow.BlockSize(1)  <<"\n";
-   MFEM_ASSERT(false, "TEST STOP");
+   //MFEM_ASSERT(false, "TEST STOP");
    // solve the system
    std::cout << "SOLVE FLOWFIELD \n";
    solver.Mult(rhs_flow, x_flow);
    chrono.Stop();
-
+   
+   MFEM_ASSERT(false, "TEST STOP");
 
    // check if solver converged
-   stokesOp->RecoverFEMSolution(x_flow.GetBlock(0), rhs_flow.GetBlock(0), v);
+   a->RecoverFEMSolution(x_flow.GetBlock(0), rhs_flow.GetBlock(0), v);
+   b->RecoverFEMSolution(x_flow.GetBlock(1), rhs_flow.GetBlock(1), p);
    // Save the refined mesh and the solution in parallel. This output can
    //     be viewed later using GLVis: "glvis -np <np> -m mesh -g sol".
    {
@@ -796,10 +809,27 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem:
       v_ofs.precision(8);
       v.Save(v_ofs);
    }
-
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19916;
+      mfem::socketstream sol_sock1(vishost, visport);
+      sol_sock1 << "parallel " << num_procs << " " << myid << "\n";
+      sol_sock1.precision(8);
+      sol_sock1 << "solution\n" << *pmesh << v << std::flush;
+   }
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19917;
+      mfem::socketstream sol_sock2(vishost, visport);
+      sol_sock2 << "parallel " << num_procs << " " << myid << "\n";
+      sol_sock2.precision(8);
+      sol_sock2 << "solution\n" << *pmesh << p << std::flush;
+   }
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("Stokes.mesh");
+      std::ofstream mesh_ofs("mesh.mesh");
       mesh_ofs.precision(8);
       mesh->Print(mesh_ofs);
 
@@ -822,15 +852,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem:
       sol_sock2.precision(8);
       sol_sock2 << "solution\n" << *mesh << p << std::flush;
    }
-   */
-
-   mfem::MINRESSolver solver(MPI_COMM_WORLD);
-   solver.SetAbsTol(atol);
-   solver.SetRelTol(rtol);
-   solver.SetMaxIter(maxIter);
-   solver.SetOperator(*stokesOp);
-   solver.SetPrintLevel(3);
-   solver.Mult(rhs_flow, x_flow);
+   
 
    return true;
 }

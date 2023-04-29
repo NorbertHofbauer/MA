@@ -14,7 +14,7 @@
 # Default options. To replace these, copy this file to user.cmake and modify it.
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release" CACHE STRING
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING
       "Build type: Debug, Release, RelWithDebInfo, or MinSizeRel." FORCE)
 endif()
 
