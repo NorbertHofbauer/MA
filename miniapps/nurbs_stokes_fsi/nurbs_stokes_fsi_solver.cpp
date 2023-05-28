@@ -171,7 +171,11 @@ bool NurbsStokesSolver::init_dirichletbc()
    vdbc_bdr_noslip = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // to select only the boundary markers for the no slip walls
    pdbc_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
    tfdbc_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tfdbc_bdr_all = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tfiface_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
    tsdbc_bdr = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
+   tsiface_bdr = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
+   tsdbc_bdr_all = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
    vdummy_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
    pdummy_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
    tfdummy_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
@@ -188,7 +192,11 @@ bool NurbsStokesSolver::init_dirichletbc()
 
    // temperature
    tfdbc_bdr = 0;
+   tfiface_bdr = 0;
+   tfdbc_bdr_all = 0;
    tsdbc_bdr = 0;
+   tsiface_bdr = 0;
+   tsdbc_bdr_all = 0;
 
    // mark dummy
    vdummy_bdr = 0;
@@ -225,16 +233,29 @@ bool NurbsStokesSolver::init_dirichletbc()
    for (size_t i = 0; i < user_tfdbc_bdr.Size(); i++)
    {
       tfdbc_bdr[user_tfdbc_bdr[i]-1] = 1;
+      tfdbc_bdr_all[user_tfdbc_bdr[i]-1] = 1;
    }
+   for (size_t i = 0; i < user_tfiface_bdr.Size(); i++)
+   {
+      tfiface_bdr[user_tfiface_bdr[i]-1] = 1;
+      tfdbc_bdr_all[user_tfiface_bdr[i]-1] = 1;
+   }
+
    for (size_t i = 0; i < user_tsdbc_bdr.Size(); i++)
    {
       tsdbc_bdr[user_tsdbc_bdr[i]-1] = 1;
+      tsdbc_bdr_all[user_tsdbc_bdr[i]-1] = 1;
+   }
+   for (size_t i = 0; i < user_tsiface_bdr.Size(); i++)
+   {
+      tsiface_bdr[user_tsiface_bdr[i]-1] = 1;
+      tsdbc_bdr_all[user_tsiface_bdr[i]-1] = 1;
    }
 
    // get the true dofs of the boundaries
    vfes->GetEssentialTrueDofs(vdbc_bdr_all, vel_ess_tdof_list);
    pfes->GetEssentialTrueDofs(pdbc_bdr, pres_ess_tdof_list);   
-   tffes->GetEssentialTrueDofs(tfdbc_bdr, tempf_ess_tdof_list);
+   tffes->GetEssentialTrueDofs(tfdbc_bdr_all, tempf_ess_tdof_list);
    tsfes->GetEssentialTrueDofs(tsdbc_bdr, temps_ess_tdof_list);
 
    return true;
@@ -677,6 +698,107 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    return true;
 }
 
+
+bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0)
+{
+   mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
+
+   // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
+   // means we will build a system that needed to be solved for the desired boundary values
+
+   // create vectors for coefficients and boundary markers
+
+   std::vector<mfem::Array<int>> tfdbc_bdr_marker;
+   std::vector<mfem::ConstantCoefficient> tfdbc_bdr_coefficient;
+
+   for (size_t i = 0; i < user_tfdbc_bdr.Size(); i++)
+   {
+      tfdbc_bdr_marker.push_back(mfem::Array<int>(mesh_fluid->bdr_attributes.Max()));
+      tfdbc_bdr_marker[i] = 0;
+      tfdbc_bdr_marker[i][user_tfdbc_bdr[i]-1] = 1;
+
+      mfem::ConstantCoefficient cc(user_tfdbc_bdr_values[i]);
+      tfdbc_bdr_coefficient.push_back(cc);
+      //std::cout << user_tdbc_bdr_values[i] << " temperature values \n";
+   }
+
+   InterfaceDirichletCoefficient ifacecoef;
+   ifacecoef.SetGridFunctionSource(ts0);
+   ifacecoef.SetGridFunctionTarget(tf0);
+
+   // TEMPERATURE
+   // define rhs with the desired boundary condition values
+   mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
+   mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
+   // define bilinear form add the boundary, means the nurbs add the boundary
+   mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tfiface_bdr);
+   d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfiface_bdr);
+   for (size_t i = 0; i < tfdbc_bdr_marker.size(); i++)
+   {
+      h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfdbc_bdr_coefficient[i]),tfdbc_bdr_marker[i]); // define integrator on desired boundary
+      d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+   }
+   h_bc->Assemble(); // assemble the linear form (vector)   
+   d_bc.Assemble(); // assemble the bilinear form (matrix)
+
+   mfem::SparseMatrix D_BC;
+   mfem::Vector T_BC, H_BC;
+   d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d_bc.FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
+   
+   mfem::GMRESSolver bc_solver;
+   
+   bc_solver.SetAbsTol(atol);
+   bc_solver.SetRelTol(rtol);
+   bc_solver.SetMaxIter(maxIter);
+   bc_solver.SetOperator(D_BC);
+   bc_solver.SetKDim((int)maxIter/5);
+   bc_solver.SetPrintLevel(3);
+   // solve the system
+   bc_solver.Mult(H_BC, T_BC);
+
+   // check if solver converged
+   if (bc_solver.GetConverged())
+   {
+      std::cout << "Solver converged in " << bc_solver.GetNumIterations()
+                << " iterations with a residual norm of "
+                << bc_solver.GetFinalNorm() << ".\n";
+   }
+   else
+   {
+      std::cout << "Solver did not converge in " << bc_solver.GetNumIterations()
+                << " iterations. Residual norm is " << bc_solver.GetFinalNorm()
+                << ".\n";
+   }
+   //std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
+
+   // Save the mesh and the solution
+   {
+      std::ofstream mesh_ofs("fluid.mesh");
+      mesh_ofs.precision(8);
+      mesh_fluid->Print(mesh_ofs);
+
+      std::ofstream tf_bc_ofs("sol_tf_bc.gf");
+      tf_bc_ofs.precision(8);
+      tf_bc.Save(tf_bc_ofs);
+      tf0.Save(tf_bc_ofs);
+   }
+   if (false)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19918;
+      mfem::socketstream sol_sock(vishost, visport);
+      sol_sock.precision(8);
+      sol_sock << "solution\n" << *mesh_fluid << tf_bc << std::flush;
+   }
+
+   tf0=tf_bc;
+
+   return true;
+}
+
+
 bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
 {
    mfem::GridFunction ts_bc(tsfes); // to calculate our gridfunction on the dirichlet boundary
@@ -992,38 +1114,10 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
 {
    // Setup bilinear and linear forms
    tf = tf0;
-/*
-   auto lambda_velocityfield = [this](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
-   {
-      double h=1;
-      VelocityValue[0] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
-      
-      VelocityValue[0] = 0;
-      //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
-      VelocityValue[1] = 0;
-      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
-      std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
-      return;
-   };
-*/
    // rhs for advection diffusion heat transfer
    mfem::ConstantCoefficient zero(0.0); // zero source term
    mfem::LinearForm *h(new mfem::LinearForm(tffes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
-
-   mfem::Array<int> bdr_marker;
-   bdr_marker = mfem::Array<int>(mesh_fluid->bdr_attributes.Max());
-   bdr_marker = 0;
-   for (size_t i = 0; i < user_tfiface_bdr.Size(); i++)
-   {
-      bdr_marker[user_tfiface_bdr[i]-1] = 1;
-   }
-
-   InterfaceCoefficient ifacecoef(0.01);
-   ifacecoef.SetGridFunctionSource(ts0);
-   ifacecoef.SetGridFunctionTarget(tf0);
-   h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), bdr_marker);
-   
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
@@ -1102,62 +1196,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
       tf_ofs.precision(8);
       tf.Save(tf_ofs);
    }
-   /*
-   if (visualization)
-   {
-      char vishost[] = "localhost";
-      int  visport   = 19916;
-      mfem::socketstream sol_sock(vishost, visport);
-      sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh_fluid << tf << std::flush;
-   }*/
-   /*
-   // SHEARRATE COMPUTATION FOR CHECKING
-   mfem::GridFunction shearrate(tfes);
-   shearrate = 0;
-   //ShearRateCoefficient src;
-   CarreauModelCoefficient src;
-   src.SetA(200);
-   src.SetB(1);
-   src.SetC(1);
-   src.SetVelocity(v0);
-
-   mfem::LinearForm *rhs(new mfem::LinearForm(tfes)); // define linear form for rhs
-   rhs->AddDomainIntegrator(new mfem::DomainLFIntegrator(src));
-   rhs->Assemble(); // assemble the linear form (vector)
-   mfem::BilinearForm a(tfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
-   mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
-   a.AddDomainIntegrator(new mfem::MassIntegrator(One_bc)); // bilinear form (lambda*u_vector),(v_vector))
-   a.Assemble(); // assemble the bilinear form (matrix)
    
-   mfem::SparseMatrix A;
-   mfem::Vector SHEARRATE, RHS;
-   a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   a.FormLinearSystem(temp_ess_tdof_list_dummy, shearrate, *rhs, A, SHEARRATE, RHS); // form D_BC
-
-   solver.SetOperator(A);
-   std::cout << "SOLVE SHEARRATE \n";   
-   // solve the system
-   solver.Mult(RHS, shearrate);
-   {
-      std::ofstream mesh_ofs("Stokes.mesh");
-      mesh_ofs.precision(8);
-      mesh->Print(mesh_ofs);
-
-      std::ofstream shearrate_ofs("sol_shearrate.gf");
-      shearrate_ofs.precision(8);
-      shearrate.Save(shearrate_ofs);
-   }
-   if (visualization)
-   {
-      char vishost[] = "localhost";
-      int  visport   = 19916;
-      mfem::socketstream sol_sock(vishost, visport);
-      sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh << shearrate << std::flush;
-   }
-   */
-
    return true;
 }
 
@@ -1170,18 +1209,10 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
    mfem::ConstantCoefficient zero(0.0); // zero source term
    mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
-   
-   mfem::Array<int> bdr_marker;
-   bdr_marker = mfem::Array<int>(mesh_solid->bdr_attributes.Max());
-   bdr_marker = 0;
-   for (size_t i = 0; i < user_tsiface_bdr.Size(); i++)
-   {
-      bdr_marker[user_tsiface_bdr[i]-1] = 1;
-   }
-   InterfaceCoefficient ifacecoef(0.01);
+   InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid);
    ifacecoef.SetGridFunctionSource(tf0);
    ifacecoef.SetGridFunctionTarget(ts0);
-   h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), bdr_marker);
+   h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tsiface_bdr);
    
    h->Assemble(); // assemble the linear form (vector)
 
@@ -1274,7 +1305,8 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
 {
 
    if (bcstrong)
-   {
+   {  
+      calc_dirichletbc_fluid_cht(tf0,ts0);
       calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
       calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf);
    } else if (bcweak)

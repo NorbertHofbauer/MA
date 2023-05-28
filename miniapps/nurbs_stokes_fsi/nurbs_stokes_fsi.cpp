@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
    mfem::Array<int> tsiface_bdr;
    double init_temp;
    
-   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 3 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '28.5 0 28.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc -0.1 -tsdc -0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 2 -rel 1
+   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 1 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '28.5 0 28.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1
       
    // Parse command-line options.
    // input options for our executable
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
          MFEM_ASSERT(model_parameters.Size() == 5, "CarreauWLF Model needs 3 Parameters k1,k2,k3,k4,k5!");
          CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
          //set reference temperature on first iteration, otherwise model crashes
-         if (iter==1)
+         /*if (iter==1)
          {
             for (size_t i = 0; i < tf0.Size(); i++)
             {
@@ -260,13 +260,13 @@ int main(int argc, char *argv[])
                }
                //std::cout <<  t0[i] << " t0 \n";
             }
-         }
+         }*/
          nssolver.solve_flow(v0,p0,tf0,v,p,tf,kin_vis);
       }else if (vis_model==3)
       {
          MFEM_ASSERT(model_parameters.Size() == 5, "PowerLaw Model needs 4 Parameters m0,n,a,T0,shearrate0!");
          PowerLawModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
-         if (iter==1)
+         /*if (iter==1)
          {
             for (size_t i = 0; i < tf0.Size(); i++)
             {
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
                }
                //std::cout <<  t0[i] << " t0 \n";
             }
-         }
+         }*/
          nssolver.solve_flow(v0,p0,tf0,v,p,tf,kin_vis);
       }else{
          MFEM_ASSERT(false, "Viscosity Model not available!");

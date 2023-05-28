@@ -80,10 +80,14 @@ public:
    mfem::Array<int> vdbc_bdr_noslip; // to select only the boundary markers for the no slip walls
    mfem::Array<int> pdbc_bdr; // contains the whole boundary markers
    mfem::Array<int> tfdbc_bdr; // contains the whole boundary markers
+   mfem::Array<int> tfiface_bdr; // contains the whole boundary markers
+   mfem::Array<int> tfdbc_bdr_all; // contains the whole boundary markers
    mfem::Array<int> vdummy_bdr; // contains the whole boundary markers
    mfem::Array<int> pdummy_bdr; // contains the whole boundary markers
    mfem::Array<int> tfdummy_bdr; // contains the whole boundary markers
    mfem::Array<int> tsdbc_bdr; // contains the whole boundary markers
+   mfem::Array<int> tsiface_bdr; // contains the whole boundary markers
+   mfem::Array<int> tsdbc_bdr_all; // contains the whole boundary markers
    mfem::Array<int> tsdummy_bdr; // contains the whole boundary markers
 
    mfem::Array<int> vel_ess_tdof_list;
@@ -129,6 +133,7 @@ public:
    bool set_iface_solid(mfem::Array<int> boundaries); //sets the iface boundary in solid side conditions
 
    bool calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0); // calculate our gridfunction on the dirchlet bc
+   bool calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0); // calculate our gridfunction on the dirchlet bc
    bool calc_dirichletbc_solid(mfem::GridFunction &ts0); // calculate our gridfunction on the dirchlet bc
    
    bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf, mfem::Coefficient &kin_vis); // assemble and compute our system matrices with strong boundary conditions
