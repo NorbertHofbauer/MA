@@ -14,6 +14,7 @@
 //using namespace mfem;
 #include "mfem.hpp" // include mfem project
 #include "viscosity_models.hpp" // include our shear rate models
+#include "interfacecoefficient.hpp" // interface coefficient
 
 class NurbsStokesSolver
 {
@@ -43,6 +44,8 @@ public:
    mfem::Vector user_tfdbc_bdr_values;
    mfem::Array<int> user_tsdbc_bdr;
    mfem::Vector user_tsdbc_bdr_values;
+   mfem::Array<int> user_tfiface_bdr;
+   mfem::Array<int> user_tsiface_bdr;
 
    const char *meshfile_fluid; // path to meshfile fluid
    const char *meshfile_solid; // path to meshfile solid
@@ -95,10 +98,12 @@ public:
    bool is_initialized = false;
    bool bcstrong = true;
    bool bcweak = false;
+   bool bfsi = false; // will be set true after first iteration
    // SOLVER
    int maxIter=10; // maximal number of iterations
    double rtol = 1.e-10; // convergence criteria
    double atol = 1.e-10; // convergence criteria
+   double max_error = 1e-3; // max error for interface iterations
    int solver_type = 1;    // type 1  MINRES
 
    bool init(); // initialize, set mesh properties and elevations before init
@@ -120,14 +125,16 @@ public:
    bool set_dirichletbc_pressure(mfem::Array<int> boundaries,mfem::Vector boundaries_values); //sets the dirichlet boundary in the pressure field
    bool set_dirichletbc_temperature_fluid(mfem::Array<int> boundaries,mfem::Vector boundaries_values); //sets the dirichlet boundary in the temperature field
    bool set_dirichletbc_temperature_solid(mfem::Array<int> boundaries,mfem::Vector boundaries_values); //sets the dirichlet boundary in the temperature field
+   bool set_iface_fluid(mfem::Array<int> boundaries); //sets the iface boundary in fluid side conditions
+   bool set_iface_solid(mfem::Array<int> boundaries); //sets the iface boundary in solid side conditions
 
    bool calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0); // calculate our gridfunction on the dirchlet bc
    bool calc_dirichletbc_solid(mfem::GridFunction &ts0); // calculate our gridfunction on the dirchlet bc
    
    bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf, mfem::Coefficient &kin_vis); // assemble and compute our system matrices with strong boundary conditions
    
-   bool calc_temperaturesystem_strongbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &tf); // assemble and compute our system matrices with strong boundary conditions
-   bool calc_temperaturesystem_strongbc_solid(mfem::GridFunction &ts0, mfem::GridFunction &ts); // assemble and compute our system matrices with strong boundary conditions
+   bool calc_temperaturesystem_strongbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &tf0,mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts); // assemble and compute our system matrices with strong boundary conditions
+   bool calc_temperaturesystem_strongbc_solid(mfem::GridFunction &tf0, mfem::GridFunction &ts0,mfem::GridFunction &tf, mfem::GridFunction &ts); // assemble and compute our system matrices with strong boundary conditions
 
    bool solve_flow(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf,mfem::Coefficient &kin_vis);
    bool solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts);

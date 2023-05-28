@@ -47,6 +47,8 @@ int main(int argc, char *argv[])
    double p_error_norm_l2 = 1;
    double tf_error_norm_l2 = 1;
    double ts_error_norm_l2 = 1;
+   double cht_tf_error_norm_l2 = 1;
+   double cht_ts_error_norm_l2 = 1;
    double max_error = 1e-3;
    mfem::Array<int> vdbc_bdr_noslip;
    mfem::Array<int> vdbc_bdr;
@@ -57,11 +59,12 @@ int main(int argc, char *argv[])
    mfem::Vector tfdbc_bdr_values;
    mfem::Array<int> tsdbc_bdr;
    mfem::Vector tsdbc_bdr_values;
+   mfem::Array<int> tfiface_bdr;
+   mfem::Array<int> tsiface_bdr;
    double init_temp;
    
-   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 3 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '28.5 0 28.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc -0.1 -tsdc -0.5 -mi 10000 -mi2 5 -oev 2 -oep 1 -oetf 0 -oets 2 -rel 1
-   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 3 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '2 3 6 5 9 8 11' -vdbc '7 10 12' -vdbc_values '0 -28.5 0 -28.5 0 -28.5' -pdbc '4 1' -pdbc_values '10 10' -tfdbc '7 10 12 3 8 2 9 6 5 11' -tfdbc_values '220 220 220 225 225 230 230 230 225 225' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc -0.1 -tsdc -0.5 -mi 10000 -mi2 5 -oev 2 -oep 1 -oetf 0 -oets 2 -rel 1
-   
+   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 3 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '28.5 0 28.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc -0.1 -tsdc -0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 2 -rel 1
+      
    // Parse command-line options.
    // input options for our executable
    mfem::OptionsParser args(argc, argv);
@@ -127,6 +130,10 @@ int main(int argc, char *argv[])
                   "Temperature Dirichlet Boundaries. e.g. -tsdbc 1 2 6 5 ...",true);   
    args.AddOption(&tsdbc_bdr_values, "-tsdbc_values", "--temperature_dirchlet_bdr_values_solid", 
                   "Values for the Solid Temperature Dirichlet Boundaries. e.g. -tsdbc_values 1.1 2.9 6.7 5.22 ...",true);
+   args.AddOption(&tfiface_bdr, "-tfiface", "--temperature_iface_fluid", 
+                  "Temperature interface fluid. e.g. -tfiface 2 9 6 ...",true);
+   args.AddOption(&tsiface_bdr, "-tsiface", "--temperature_iface_solid", 
+                  "Temperature interface solid. e.g. -tsiface 2 3 4 ...",true);   
    args.Parse();
    if (!args.Good())
    {
@@ -150,17 +157,21 @@ int main(int argc, char *argv[])
 
    nssolver.rtol = rtol; // convergence criteria
    nssolver.atol = atol; // convergence criteria
+   nssolver.max_error = max_error;
    
    nssolver.set_dirichletbc_velocity_noslip(vdbc_bdr_noslip);
    nssolver.set_dirichletbc_velocity(vdbc_bdr, vdbc_bdr_values);
    nssolver.set_dirichletbc_pressure(pdbc_bdr, pdbc_bdr_values);
    nssolver.set_dirichletbc_temperature_fluid(tfdbc_bdr, tfdbc_bdr_values);
    nssolver.set_dirichletbc_temperature_solid(tsdbc_bdr, tsdbc_bdr_values);
+   nssolver.set_iface_fluid(tfiface_bdr);
+   nssolver.set_iface_solid(tsiface_bdr);
 
    nssolver.init();
 
    mfem::GridFunction vr(nssolver.vfes),pr(nssolver.pfes),tfr(nssolver.tffes),tsr(nssolver.tsfes);
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),tf0(nssolver.tffes),v(nssolver.vfes),p(nssolver.pfes),tf(nssolver.tffes),ts0(nssolver.tsfes),ts(nssolver.tsfes);
+   mfem::GridFunction cht_tf0(nssolver.tffes),cht_ts0(nssolver.tsfes);
    nssolver.visualization = 0;
    nssolver.calc_dirichletbc_fluid(v0,p0,tf0);
    nssolver.visualization = 0;
@@ -186,6 +197,42 @@ int main(int argc, char *argv[])
       p_error_norm_l2 = p0.Norml2();
       tf_error_norm_l2 = tf0.Norml2();
       ts_error_norm_l2 = ts0.Norml2();
+
+
+      // set initial temperatures for temperature fields
+      
+      if (iter==1)
+         {
+         double average=0;
+         
+         for (size_t i = 0; i < tfdbc_bdr_values.Size(); i++)
+         {
+            average += tfdbc_bdr_values[i];
+         }
+         average = average/tfdbc_bdr_values.Size();
+
+         for (size_t i = 0; i < tf0.Size(); i++)
+         {
+            if (tf0[i] == 0)
+            {
+               tf0[i] = average;
+            }
+         }
+
+         for (size_t i = 0; i < tsdbc_bdr_values.Size(); i++)
+         {
+            average += tsdbc_bdr_values[i];
+         }
+         average = average/tsdbc_bdr_values.Size();
+
+         for (size_t i = 0; i < ts0.Size(); i++)
+         {
+            if (ts0[i] == 0)
+            {
+               ts0[i] = average;
+            }
+         }
+      }
 
       // viscosity model - must be a mfem::coefficient or a child class from coefficient
       if (vis_model==0)
@@ -257,7 +304,59 @@ int main(int argc, char *argv[])
       {
          nssolver.visualization = 1;
       }
-      nssolver.solve_temperature(v0,tf0,ts0,v,tf,ts);
+      
+      cht_tf_error_norm_l2 = 1;
+      cht_ts_error_norm_l2 = 1;
+
+      cht_tf0 = tf0;
+      cht_ts0 = ts0;
+
+      int iter2 = 0;
+      while ((cht_tf_error_norm_l2>atol)||(cht_ts_error_norm_l2>atol))
+      {  
+         iter2+=1;
+                  
+         cht_tf_error_norm_l2 = cht_tf0.Norml2();
+         cht_ts_error_norm_l2 = cht_ts0.Norml2();
+
+         nssolver.solve_temperature(v0,cht_tf0,cht_ts0,v,tf,ts);
+
+         cht_tf0 = tf;
+         cht_ts0 = ts;
+
+         cht_tf_error_norm_l2 = std::abs(cht_tf_error_norm_l2 - tf.Norml2());
+         cht_ts_error_norm_l2 = std::abs(cht_ts_error_norm_l2 - ts.Norml2());
+         
+         std::cout << "CHT tf_error_norm l2 ";
+         std::cout <<  cht_tf_error_norm_l2 << " \n";
+         std::cout << "CHT ts_error_norm l2 ";
+         std::cout <<  cht_ts_error_norm_l2 << " \n";
+
+         if (iter2==100)
+         {
+            std::cout << " too many Interface Iterations! \n";
+            break;
+         }
+      }
+
+      if (nssolver.visualization)
+      {
+         char vishost[] = "localhost";
+         int  visport   = 19916;
+         mfem::socketstream sol_sock(vishost, visport);
+         sol_sock.precision(8);
+         sol_sock << "solution\n" << *nssolver.mesh_fluid << tf << std::flush;
+      }
+      
+      if (nssolver.visualization)
+      {
+         char vishost[] = "localhost";
+         int  visport   = 19916;
+         mfem::socketstream sol_sock(vishost, visport);
+         sol_sock.precision(8);
+         sol_sock << "solution\n" << *nssolver.mesh_solid << ts << std::flush;
+      }
+
       nssolver.visualization = 0;
       //v = v0;
       
@@ -273,7 +372,6 @@ int main(int argc, char *argv[])
       tfr = tf0;
       tsr = ts0;
       
-
       v_error_norm_l2 = std::abs(v_error_norm_l2 - v0.Norml2());
       p_error_norm_l2 = std::abs(p_error_norm_l2 - p0.Norml2());
       tf_error_norm_l2 = std::abs(tf_error_norm_l2 - tf0.Norml2());

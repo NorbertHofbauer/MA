@@ -16,6 +16,8 @@ add_mfem_miniapp(
   nurbs_stokes_fsi_solver.hpp
   viscosity_models.cpp
   viscosity_models.hpp
+  interfacecoefficient.cpp
+  interfacecoefficient.hpp
   LIBRARIES mfem)
 
 if (MFEM_ENABLE_TESTING)

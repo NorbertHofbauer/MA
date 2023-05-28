@@ -321,6 +321,20 @@ bool NurbsStokesSolver::set_dirichletbc_temperature_solid(mfem::Array<int> bound
    return true;
 }
 
+bool NurbsStokesSolver::set_iface_fluid(mfem::Array<int> boundaries)
+{
+   user_tfiface_bdr = boundaries;
+   
+   return true;
+}
+
+bool NurbsStokesSolver::set_iface_solid(mfem::Array<int> boundaries)
+{
+   user_tsiface_bdr = boundaries;
+   
+   return true;
+}
+
 bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0)
 {
    auto lambda_inlet = [this](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
@@ -974,7 +988,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    return true;
 }
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &tf)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &tf0,mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf,mfem::GridFunction &ts)
 {
    // Setup bilinear and linear forms
    tf = tf0;
@@ -996,6 +1010,20 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
    mfem::ConstantCoefficient zero(0.0); // zero source term
    mfem::LinearForm *h(new mfem::LinearForm(tffes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+
+   mfem::Array<int> bdr_marker;
+   bdr_marker = mfem::Array<int>(mesh_fluid->bdr_attributes.Max());
+   bdr_marker = 0;
+   for (size_t i = 0; i < user_tfiface_bdr.Size(); i++)
+   {
+      bdr_marker[user_tfiface_bdr[i]-1] = 1;
+   }
+
+   InterfaceCoefficient ifacecoef(0.01);
+   ifacecoef.SetGridFunctionSource(ts0);
+   ifacecoef.SetGridFunctionTarget(tf0);
+   h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), bdr_marker);
+   
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
@@ -1074,6 +1102,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
       tf_ofs.precision(8);
       tf.Save(tf_ofs);
    }
+   /*
    if (visualization)
    {
       char vishost[] = "localhost";
@@ -1081,7 +1110,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
       mfem::socketstream sol_sock(vishost, visport);
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh_fluid << tf << std::flush;
-   }
+   }*/
    /*
    // SHEARRATE COMPUTATION FOR CHECKING
    mfem::GridFunction shearrate(tfes);
@@ -1132,7 +1161,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
    return true;
 }
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction &ts0, mfem::GridFunction &ts)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction &ts0,mfem::GridFunction &tf0, mfem::GridFunction &ts,mfem::GridFunction &tf)
 {
    // Setup bilinear and linear forms
    ts = ts0;
@@ -1141,6 +1170,19 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
    mfem::ConstantCoefficient zero(0.0); // zero source term
    mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+   
+   mfem::Array<int> bdr_marker;
+   bdr_marker = mfem::Array<int>(mesh_solid->bdr_attributes.Max());
+   bdr_marker = 0;
+   for (size_t i = 0; i < user_tsiface_bdr.Size(); i++)
+   {
+      bdr_marker[user_tsiface_bdr[i]-1] = 1;
+   }
+   InterfaceCoefficient ifacecoef(0.01);
+   ifacecoef.SetGridFunctionSource(tf0);
+   ifacecoef.SetGridFunctionTarget(ts0);
+   h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), bdr_marker);
+   
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
@@ -1202,14 +1244,14 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
       ts_ofs.precision(8);
       ts.Save(ts_ofs);
    }
-   if (visualization)
+   /*if (visualization)
    {
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh_solid << ts << std::flush;
-   }
+   }*/
 
    return true;
 }
@@ -1233,8 +1275,8 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
 
    if (bcstrong)
    {
-      calc_temperaturesystem_strongbc_fluid(v0, tf0, v, tf);
-      calc_temperaturesystem_strongbc_solid(ts0, ts);
+      calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
+      calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf);
    } else if (bcweak)
    {
       /* code */
