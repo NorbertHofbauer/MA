@@ -18,7 +18,6 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    mfem::GridFunctionCoefficient gfc_source(gf_source); 
    mfem::GridFunctionCoefficient gfc_target(gf_target); 
    int sdim = gf_target->FESpace()->GetMesh()->SpaceDimension();
-   //double source = gfc_source.Eval(T, ip);
    mfem::Vector phys_point;
    T.Transform(ip, phys_point);
 
@@ -26,14 +25,18 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    mfem::IntegrationPoint ip_source;
    int elem_idx;
    mfem::ElementTransformation* T_source;
-   for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNBE(); ++i)
+   for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
    {
-      T_source = gf_source->FESpace()->GetMesh()->GetBdrElementTransformation(i);
+      T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
       mfem::InverseElementTransformation invtran(T_source);
       ret = invtran.Transform(phys_point, ip_source);
       if (ret == 0)
       {
          elem_idx = i;
+         std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
+         std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+         std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";
+         
          break;
       }
    }
@@ -47,7 +50,7 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    double source = 0;
    target = gfc_target.Eval(T, ip);
    source = gfc_source.Eval(*T_source, ip_source);
-   
+   //source = gf_source->GetValue(elem_idx, ip_source,1);
    
    std::cout << " source " << source << " target " << target;
    for (size_t i = 0; i < sdim; i++)
@@ -56,6 +59,11 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    }
    std::cout << "\n";
    
+   if (sdim==2)
+   {
+      std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
+      std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+   }
    
    return source;
 }
@@ -80,9 +88,9 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    mfem::IntegrationPoint ip_source;
    int elem_idx;
    mfem::ElementTransformation* T_source;
-   for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNBE(); ++i)
+   for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
    {
-      T_source = gf_source->FESpace()->GetMesh()->GetBdrElementTransformation(i);
+      T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
       mfem::InverseElementTransformation invtran(T_source);
       ret = invtran.Transform(phys_point, ip_source);
       if (ret == 0)
@@ -102,11 +110,15 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    double flux = 0;
    mfem::Vector grad_source(sdim);
    mfem::Vector nhat(sdim);
+   T_source->Reset();
    T_source->SetIntPoint(&ip_source);
    gf_source->GetGradient(*T_source, grad_source);
 
+   std::cout << " height " << T_source->Jacobian().Height() << " width " << T_source->Jacobian().Width() << " \n " ;
+   std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+   
    mfem::CalcOrtho(T_source->Jacobian(), nhat);
-   //nhat *= 1.0 / nhat.Norml1();
+   nhat *= 1.0 / nhat.Norml1();
 
    target = gfc_target.Eval(T, ip);
    source = gfc_source.Eval(*T_source, ip_source);
@@ -123,20 +135,21 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
       std::cout << " grad_source[ "<< i << "] " << grad_source[i];
    }
    std::cout << "\n";
-
+   
+   
    for (size_t i = 0; i < nhat.Size(); i++)
    {
       std::cout << " nhat[ "<< i << "] " << nhat[i];
    }
    std::cout << "\n";
-
+   
    for (size_t i = 0; i < sdim; i++)
    {
       flux += grad_source[i] * nhat[i];
    }
-
+     
    flux *= -k;
-
+   
    std::cout << " flux " << flux << "\n";
 
    return flux;

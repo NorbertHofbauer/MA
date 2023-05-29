@@ -787,7 +787,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    if (false)
    {
       char vishost[] = "localhost";
-      int  visport   = 19918;
+      int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh_fluid << tf_bc << std::flush;
@@ -1210,7 +1210,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
    mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid);
-   ifacecoef.SetGridFunctionSource(tf0);
+   ifacecoef.SetGridFunctionSource(tf);
    ifacecoef.SetGridFunctionTarget(ts0);
    h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tsiface_bdr);
    

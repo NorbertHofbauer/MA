@@ -198,42 +198,6 @@ int main(int argc, char *argv[])
       tf_error_norm_l2 = tf0.Norml2();
       ts_error_norm_l2 = ts0.Norml2();
 
-
-      // set initial temperatures for temperature fields
-      
-      if (iter==1)
-         {
-         double average=0;
-         
-         for (size_t i = 0; i < tfdbc_bdr_values.Size(); i++)
-         {
-            average += tfdbc_bdr_values[i];
-         }
-         average = average/tfdbc_bdr_values.Size();
-
-         for (size_t i = 0; i < tf0.Size(); i++)
-         {
-            if (tf0[i] == 0)
-            {
-               tf0[i] = average;
-            }
-         }
-
-         for (size_t i = 0; i < tsdbc_bdr_values.Size(); i++)
-         {
-            average += tsdbc_bdr_values[i];
-         }
-         average = average/tsdbc_bdr_values.Size();
-
-         for (size_t i = 0; i < ts0.Size(); i++)
-         {
-            if (ts0[i] == 0)
-            {
-               ts0[i] = average;
-            }
-         }
-      }
-
       // viscosity model - must be a mfem::coefficient or a child class from coefficient
       if (vis_model==0)
       {
@@ -250,7 +214,7 @@ int main(int argc, char *argv[])
          MFEM_ASSERT(model_parameters.Size() == 5, "CarreauWLF Model needs 3 Parameters k1,k2,k3,k4,k5!");
          CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
          //set reference temperature on first iteration, otherwise model crashes
-         /*if (iter==1)
+         if (iter==1)
          {
             for (size_t i = 0; i < tf0.Size(); i++)
             {
@@ -260,13 +224,13 @@ int main(int argc, char *argv[])
                }
                //std::cout <<  t0[i] << " t0 \n";
             }
-         }*/
+         }
          nssolver.solve_flow(v0,p0,tf0,v,p,tf,kin_vis);
       }else if (vis_model==3)
       {
          MFEM_ASSERT(model_parameters.Size() == 5, "PowerLaw Model needs 4 Parameters m0,n,a,T0,shearrate0!");
          PowerLawModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
-         /*if (iter==1)
+         if (iter==1)
          {
             for (size_t i = 0; i < tf0.Size(); i++)
             {
@@ -276,7 +240,7 @@ int main(int argc, char *argv[])
                }
                //std::cout <<  t0[i] << " t0 \n";
             }
-         }*/
+         }
          nssolver.solve_flow(v0,p0,tf0,v,p,tf,kin_vis);
       }else{
          MFEM_ASSERT(false, "Viscosity Model not available!");
