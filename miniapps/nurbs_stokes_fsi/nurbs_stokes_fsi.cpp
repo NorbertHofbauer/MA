@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
       cht_ts0 = ts0;
 
       int iter2 = 0;
-      while ((cht_tf_error_norm_l2>atol)||(cht_ts_error_norm_l2>atol))
+      while ((cht_tf_error_norm_l2>1e-12)||(cht_ts_error_norm_l2>1e-12))
       {  
          iter2+=1;
                   
@@ -302,9 +302,11 @@ int main(int argc, char *argv[])
          cht_tf0 = tf;
          cht_ts0 = ts;
 
-         cht_tf_error_norm_l2 = std::abs(cht_tf_error_norm_l2 - tf.Norml2());
-         cht_ts_error_norm_l2 = std::abs(cht_ts_error_norm_l2 - ts.Norml2());
-         
+         //cht_tf_error_norm_l2 = std::abs((cht_tf_error_norm_l2 - tf.Norml2())/tf.Norml2());
+         //cht_ts_error_norm_l2 = std::abs((cht_ts_error_norm_l2 - ts.Norml2())/ts.Norml2());
+         cht_tf_error_norm_l2 = std::abs((cht_tf_error_norm_l2 - tf.Norml2()));
+         cht_ts_error_norm_l2 = std::abs((cht_ts_error_norm_l2 - ts.Norml2()));
+
          std::cout << "CHT tf_error_norm l2 ";
          std::cout <<  cht_tf_error_norm_l2 << " \n";
          std::cout << "CHT ts_error_norm l2 ";
@@ -350,10 +352,10 @@ int main(int argc, char *argv[])
       tfr = tf0;
       tsr = ts0;
       
-      v_error_norm_l2 = std::abs(v_error_norm_l2 - v0.Norml2());
-      p_error_norm_l2 = std::abs(p_error_norm_l2 - p0.Norml2());
-      tf_error_norm_l2 = std::abs(tf_error_norm_l2 - tf0.Norml2());
-      ts_error_norm_l2 = std::abs(ts_error_norm_l2 - ts0.Norml2());
+      v_error_norm_l2 = std::abs((v_error_norm_l2 - v0.Norml2())/v0.Norml2());
+      p_error_norm_l2 = std::abs((p_error_norm_l2 - p0.Norml2())/p0.Norml2());
+      tf_error_norm_l2 = std::abs((tf_error_norm_l2 - tf0.Norml2())/tf0.Norml2());
+      ts_error_norm_l2 = std::abs((ts_error_norm_l2 - ts0.Norml2())/ts0.Norml2());
       
       std::cout << " v_error_norm l2 ";
       std::cout << v_error_norm_l2 << " \n";

@@ -119,6 +119,8 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    mfem::Vector nhat(sdim);
    T_source->Reset();
    T_source->SetIntPoint(&ip_source);
+   T.Reset();
+   T.SetIntPoint(&ip);
    gf_source->GetGradient(*T_source, grad_source);
    gf_target->GetGradient(T, grad_target);
 
@@ -162,7 +164,7 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    flux_source *= k_source;
    flux_target *= k_target;
    flux = beta_q*flux_target + (1-beta_q)*flux_source;
-   
+   std::cout << " delta_flux " << (flux-flux_source);
    std::cout << " flux " << flux << "\n";
    /*
    if (sdim==2)
