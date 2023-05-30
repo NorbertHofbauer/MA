@@ -45,12 +45,15 @@ int main(int argc, char *argv[])
    int orderelevationpressure = 0;
    int orderelevationtemperature_fluid = 0;
    int orderelevationtemperature_solid = 0;
-   double v_error_norm_l2 = 1;
-   double p_error_norm_l2 = 1;
-   double tf_error_norm_l2 = 1;
-   double ts_error_norm_l2 = 1;
-   double cht_tf_error_norm_l2 = 1;
-   double cht_ts_error_norm_l2 = 1;
+   double v_error_norm = 1;
+   double p_error_norm = 1;
+   double tf_error_norm = 1;
+   double ts_error_norm = 1;
+   double cht_tf_error_norm = 1;
+   double cht_ts_error_norm = 1;
+   double cht_dflux_error_norm = 1;
+   std::vector<double> flux0;
+   std::vector<double> flux;
    double max_error = 1e-3;
    mfem::Array<int> vdbc_bdr_noslip;
    mfem::Array<int> vdbc_bdr;
@@ -65,7 +68,7 @@ int main(int argc, char *argv[])
    mfem::Array<int> tsiface_bdr;
    double init_temp;
    
-   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '5.5 0 5.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 20 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3
+   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '5.5 0 5.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 20 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8
       
    // Parse command-line options.
    // input options for our executable
@@ -192,7 +195,7 @@ int main(int argc, char *argv[])
 
    //for (size_t i = 0; i < 28; i++)
    int iter=0;
-   while ((v_error_norm_l2>max_error)||(p_error_norm_l2>max_error)||(tf_error_norm_l2>max_error)||(ts_error_norm_l2>max_error))
+   while ((v_error_norm>max_error)||(p_error_norm>max_error)||(tf_error_norm>max_error)||(ts_error_norm>max_error))
    {  
       iter+=1;
       nssolver.iter = iter;
@@ -201,10 +204,10 @@ int main(int argc, char *argv[])
          nssolver.visualization = 1;
       }
 
-      v_error_norm_l2 = v0.Norml2();
-      p_error_norm_l2 = p0.Norml2();
-      tf_error_norm_l2 = tf0.Norml2();
-      ts_error_norm_l2 = ts0.Norml2();
+      v_error_norm = v0.Norml2();
+      p_error_norm = p0.Norml2();
+      tf_error_norm = tf0.Norml2();
+      ts_error_norm = ts0.Norml2();
 
       // viscosity model - must be a mfem::coefficient or a child class from coefficient
       if (vis_model==0)
@@ -277,40 +280,65 @@ int main(int argc, char *argv[])
          nssolver.visualization = 1;
       }
       
-      cht_tf_error_norm_l2 = 1;
-      cht_ts_error_norm_l2 = 1;
+      cht_tf_error_norm = 1;
+      cht_ts_error_norm = 1;
+      cht_dflux_error_norm = 1;
+      flux.clear();
 
       cht_tf0 = tf0;
       cht_ts0 = ts0;
 
       int iter2 = 0;
-      while ((cht_tf_error_norm_l2>1e-12)||(cht_ts_error_norm_l2>1e-12))
+      while ((cht_tf_error_norm>max_error)||(cht_ts_error_norm>max_error)||(cht_dflux_error_norm>max_error))
+      //while ((cht_tf_error_norm>max_error)||(cht_ts_error_norm>max_error))
       {  
          iter2+=1;
                   
-         cht_tf_error_norm_l2 = cht_tf0.Norml2();
-         cht_ts_error_norm_l2 = cht_ts0.Norml2();
+         cht_tf_error_norm = cht_tf0.Norml2();
+         cht_ts_error_norm = cht_ts0.Norml2();
 
+         if (iter2!=1)
+         {  
+            cht_dflux_error_norm = 0;
+            flux0 = flux;
+            flux.clear();
+         }
+         
          if ((iter==1)&&(iter2==1))
          {
             nssolver.calc_temperaturesystem_strongbc_solid_init(ts0, tf0, ts, tf);
             //cht_tf0 = tf;
             cht_ts0 = ts;
          }
-         nssolver.solve_temperature(v0,cht_tf0,cht_ts0,v,tf,ts);
+         nssolver.solve_temperature(v0,cht_tf0,cht_ts0,v,tf,ts,flux);
 
          cht_tf0 = tf;
          cht_ts0 = ts;
 
          //cht_tf_error_norm_l2 = std::abs((cht_tf_error_norm_l2 - tf.Norml2())/tf.Norml2());
          //cht_ts_error_norm_l2 = std::abs((cht_ts_error_norm_l2 - ts.Norml2())/ts.Norml2());
-         cht_tf_error_norm_l2 = std::abs((cht_tf_error_norm_l2 - tf.Norml2()));
-         cht_ts_error_norm_l2 = std::abs((cht_ts_error_norm_l2 - ts.Norml2()));
+         cht_tf_error_norm = std::abs((cht_tf_error_norm - tf.Norml2()));
+         cht_ts_error_norm = std::abs((cht_ts_error_norm - ts.Norml2()));
 
-         std::cout << "CHT tf_error_norm l2 ";
-         std::cout <<  cht_tf_error_norm_l2 << " \n";
-         std::cout << "CHT ts_error_norm l2 ";
-         std::cout <<  cht_ts_error_norm_l2 << " \n";
+         if (iter2!=1)
+         {
+            for (size_t i = 0; i < flux.size(); i++)
+            {
+               //std::cout << " flux ";
+               //std::cout <<  flux[i] << " \n";
+               if (cht_dflux_error_norm < std::abs(flux0[i] - flux[i]))
+               {
+                  cht_dflux_error_norm = std::abs(flux0[i] - flux[i]);
+               }
+            }
+         }
+
+         std::cout << "CHT tf_error_norm ";
+         std::cout <<  cht_tf_error_norm << " \n";
+         std::cout << "CHT ts_error_norm ";
+         std::cout <<  cht_ts_error_norm << " \n";
+         std::cout << "CHT dflux_error_norm ";
+         std::cout <<  cht_dflux_error_norm << " \n";
 
          if (iter2==100)
          {
@@ -352,19 +380,26 @@ int main(int argc, char *argv[])
       tfr = tf0;
       tsr = ts0;
       
-      v_error_norm_l2 = std::abs((v_error_norm_l2 - v0.Norml2())/v0.Norml2());
-      p_error_norm_l2 = std::abs((p_error_norm_l2 - p0.Norml2())/p0.Norml2());
-      tf_error_norm_l2 = std::abs((tf_error_norm_l2 - tf0.Norml2())/tf0.Norml2());
-      ts_error_norm_l2 = std::abs((ts_error_norm_l2 - ts0.Norml2())/ts0.Norml2());
-      
-      std::cout << " v_error_norm l2 ";
-      std::cout << v_error_norm_l2 << " \n";
-      std::cout << " p_error_norm l2 ";
-      std::cout <<  p_error_norm_l2 << " \n";
-      std::cout << " tf_error_norm l2 ";
-      std::cout <<  tf_error_norm_l2 << " \n";
-      std::cout << " ts_error_norm l2 ";
-      std::cout <<  ts_error_norm_l2 << " \n";
+      v_error_norm = std::abs((v_error_norm - v0.Norml2())/v0.Norml2());
+      p_error_norm = std::abs((p_error_norm - p0.Norml2())/p0.Norml2());
+      tf_error_norm = std::abs((tf_error_norm - tf0.Norml2())/tf0.Norml2());
+      ts_error_norm = std::abs((ts_error_norm - ts0.Norml2())/ts0.Norml2());
+
+      /*
+      v_error_norm = std::abs((v_error_norm - v0.Norml2()));
+      p_error_norm = std::abs((p_error_norm - p0.Norml2()));
+      tf_error_norm = std::abs((tf_error_norm - tf0.Norml2()));
+      ts_error_norm = std::abs((ts_error_norm - ts0.Norml2()));
+      */
+
+      std::cout << " v_error_norm ";
+      std::cout << v_error_norm << " \n";
+      std::cout << " p_error_norm ";
+      std::cout <<  p_error_norm << " \n";
+      std::cout << " tf_error_norm ";
+      std::cout <<  tf_error_norm << " \n";
+      std::cout << " ts_error_norm ";
+      std::cout <<  ts_error_norm << " \n";
       
       std::cout << "NURBS STOKES ITERATION " + std::to_string(iter) + " END\n";
       if (iter==maxIter2)

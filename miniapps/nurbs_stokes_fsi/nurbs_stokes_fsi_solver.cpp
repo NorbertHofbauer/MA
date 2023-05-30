@@ -1200,7 +1200,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
    return true;
 }
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction &ts0,mfem::GridFunction &tf0, mfem::GridFunction &ts,mfem::GridFunction &tf)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction &ts0,mfem::GridFunction &tf0, mfem::GridFunction &ts,mfem::GridFunction &tf, std::vector<double> &flux)
 {
    // Setup bilinear and linear forms
    ts = ts0;
@@ -1210,7 +1210,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
    mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    
-   InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid,temp_diffusion_const_solid,beta_q);
+   InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid,temp_diffusion_const_solid,beta_q,flux);
    ifacecoef.SetGridFunctionSource(tf);
    ifacecoef.SetGridFunctionTarget(ts0);
    h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tsiface_bdr);
@@ -1390,14 +1390,14 @@ bool NurbsStokesSolver::solve_flow(mfem::GridFunction &v0,mfem::GridFunction &p0
    return true;
 }
 
-bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts)
+bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts, std::vector<double> &flux)
 {
 
    if (bcstrong)
    {  
       calc_dirichletbc_fluid_cht(tf0,ts0);
       calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
-      calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf);
+      calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf, flux);
    } else if (bcweak)
    {
       /* code */

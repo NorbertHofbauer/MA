@@ -102,7 +102,6 @@ public:
    bool is_initialized = false;
    bool bcstrong = true;
    bool bcweak = false;
-   bool bfsi = false; // will be set true after first iteration
    // SOLVER
    int iter=0; // iterations count from outerloop
    int maxIter=10; // maximal number of iterations
@@ -142,11 +141,11 @@ public:
    bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf, mfem::Coefficient &kin_vis); // assemble and compute our system matrices with strong boundary conditions
    
    bool calc_temperaturesystem_strongbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &tf0,mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts); // assemble and compute our system matrices with strong boundary conditions
-   bool calc_temperaturesystem_strongbc_solid(mfem::GridFunction &tf0, mfem::GridFunction &ts0,mfem::GridFunction &tf, mfem::GridFunction &ts); // assemble and compute our system matrices with strong boundary conditions
+   bool calc_temperaturesystem_strongbc_solid(mfem::GridFunction &tf0, mfem::GridFunction &ts0,mfem::GridFunction &tf, mfem::GridFunction &ts, std::vector<double> &flux); // assemble and compute our system matrices with strong boundary conditions
    bool calc_temperaturesystem_strongbc_solid_init(mfem::GridFunction &tf0, mfem::GridFunction &ts0,mfem::GridFunction &tf, mfem::GridFunction &ts); // assemble and compute our system matrices with strong boundary conditions
 
    bool solve_flow(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf,mfem::Coefficient &kin_vis);
-   bool solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts);
+   bool solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts, std::vector<double> &flux);
 };
 
 

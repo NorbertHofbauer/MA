@@ -165,6 +165,7 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    flux_target *= k_target;
    flux = beta_q*flux_target + (1-beta_q)*flux_source;
    std::cout << " delta_flux " << (flux-flux_source);
+   dflux->push_back(flux-flux_source);
    std::cout << " flux " << flux << "\n";
    /*
    if (sdim==2)

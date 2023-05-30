@@ -27,14 +27,15 @@ class InterfaceFluxCoefficient : public mfem::Coefficient
 protected:
    mfem::GridFunction *gf_source; // gridfunction source
    mfem::GridFunction *gf_target; // gridfunction target
+   std::vector<double> *dflux;
 
 public:
    const double k_source; // heat transfer coefficient
    const double k_target; // heat transfer coefficient
    const double beta_q; // relaxation
 
-   InterfaceFluxCoefficient(const double K_SOURCE,const double K_TARGET,const double BETA_Q)
-      : gf_source(NULL),gf_target(NULL), k_source(K_SOURCE), k_target(K_TARGET), beta_q(BETA_Q){ }
+   InterfaceFluxCoefficient(const double K_SOURCE,const double K_TARGET,const double BETA_Q, std::vector<double> &DFLUX)
+      : gf_source(NULL),gf_target(NULL), k_source(K_SOURCE), k_target(K_TARGET), beta_q(BETA_Q), dflux(&DFLUX){ }
 
    void SetGridFunctionSource(mfem::GridFunction &gf_source_) { gf_source = &gf_source_; }
    void SetGridFunctionTarget(mfem::GridFunction &gf_target_) { gf_target = &gf_target_; }
@@ -42,5 +43,4 @@ public:
    virtual double Eval(mfem::ElementTransformation &T, const mfem::IntegrationPoint &ip);
 }
 ;
-
-#endif // INTERFACECOEFFICIENT_HPP
+#endif
