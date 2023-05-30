@@ -722,7 +722,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
       //std::cout << user_tdbc_bdr_values[i] << " temperature values \n";
    }
 
-   InterfaceDirichletCoefficient ifacecoef;
+   InterfaceDirichletCoefficient ifacecoef(beta_t);
    ifacecoef.SetGridFunctionSource(ts0);
    ifacecoef.SetGridFunctionTarget(tf0);
 
@@ -1209,7 +1209,8 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
    mfem::ConstantCoefficient zero(0.0); // zero source term
    mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
-   InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid);
+   
+   InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid,temp_diffusion_const_solid,beta_q);
    ifacecoef.SetGridFunctionSource(tf);
    ifacecoef.SetGridFunctionTarget(ts0);
    h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tsiface_bdr);
@@ -1275,14 +1276,102 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
       ts_ofs.precision(8);
       ts.Save(ts_ofs);
    }
-   /*if (visualization)
+   if (false)
    {
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
       sol_sock.precision(8);
       sol_sock << "solution\n" << *mesh_solid << ts << std::flush;
-   }*/
+   }
+
+   return true;
+}
+
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::GridFunction &ts0,mfem::GridFunction &tf0, mfem::GridFunction &ts,mfem::GridFunction &tf)
+{
+   // Setup bilinear and linear forms
+   ts = ts0;
+
+   // rhs for advection diffusion heat transfer
+   mfem::ConstantCoefficient zero(0.0); // zero source term
+   mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
+   h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
+   /*
+   InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid);
+   ifacecoef.SetGridFunctionSource(tf);
+   ifacecoef.SetGridFunctionTarget(ts0);
+   h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tsiface_bdr);
+   */
+   h->Assemble(); // assemble the linear form (vector)
+
+   // advection diffusion heat transfer
+   mfem::BilinearForm d(tsfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const_solid); // coefficient for the temp_diffusion_const
+   d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
+   d.Assemble(); // assemble the bilinear form (matrix)
+   //a.Finalize(); not needed, will be called on form linear system
+
+   // we need some SparseMatrix and Vector to form our linear system
+   mfem::SparseMatrix D;
+   mfem::Vector T, H;
+   d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d.FormLinearSystem(temps_ess_tdof_list, ts, *h, D, T, H); // form D
+    
+   mfem::StopWatch chrono; // stop watch to calc solve time
+   chrono.Clear();
+   chrono.Start();
+   
+   // SOLVER
+   mfem::GMRESSolver solver;
+   //solver.iterative_mode = false;
+   
+   solver.SetAbsTol(atol);
+   solver.SetRelTol(rtol);
+   solver.SetMaxIter(maxIter);
+   solver.SetOperator(D);
+   solver.SetKDim((int)maxIter/5);
+   solver.SetPrintLevel(3);
+
+   std::cout << "SOLVE TEMPERATUREFIELD SOLID \n";   
+   // solve the system
+   solver.Mult(H, ts);
+   chrono.Stop();
+   //std::cout << v0;
+ 
+   // check if solver converged
+   if (solver.GetConverged())
+   {
+      std::cout << "GMRESSolver converged in " << solver.GetNumIterations()
+                << " iterations with a residual norm of "
+                << solver.GetFinalNorm() << " .\n";
+   }
+   else
+   {
+      std::cout << "GMRESSolver did not converge in " << solver.GetNumIterations()
+                << " iterations. Residual norm is " << solver.GetFinalNorm()
+                << ".\n";
+   }
+   std::cout << "GMRESSolver solver took " << chrono.RealTime() << "s.\n";
+
+   // Save the mesh and the solution
+   {
+      std::ofstream mesh_ofs("solid.mesh");
+      mesh_ofs.precision(8);
+      mesh_solid->Print(mesh_ofs);
+
+      std::ofstream ts_ofs("sol_ts.gf");
+      ts_ofs.precision(8);
+      ts.Save(ts_ofs);
+   }
+   if (false)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19916;
+      mfem::socketstream sol_sock(vishost, visport);
+      sol_sock.precision(8);
+      sol_sock << "solution\n" << *mesh_solid << ts << std::flush;
+   }
 
    return true;
 }

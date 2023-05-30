@@ -11,8 +11,9 @@ protected:
    mfem::GridFunction *gf_target; // gridfunction target
 
 public:
-   InterfaceDirichletCoefficient()
-      : gf_source(NULL),gf_target(NULL){ }
+   const double beta_t; // relaxation
+   InterfaceDirichletCoefficient(const double BETA_T)
+      : gf_source(NULL),gf_target(NULL),beta_t(BETA_T){ }
 
    void SetGridFunctionSource(mfem::GridFunction &gf_source_) { gf_source = &gf_source_; }
    void SetGridFunctionTarget(mfem::GridFunction &gf_target_) { gf_target = &gf_target_; }
@@ -28,10 +29,12 @@ protected:
    mfem::GridFunction *gf_target; // gridfunction target
 
 public:
-   const double k; // heat transfer coefficient
+   const double k_source; // heat transfer coefficient
+   const double k_target; // heat transfer coefficient
+   const double beta_q; // relaxation
 
-   InterfaceFluxCoefficient(const double K)
-      : gf_source(NULL),gf_target(NULL), k(K){ }
+   InterfaceFluxCoefficient(const double K_SOURCE,const double K_TARGET,const double BETA_Q)
+      : gf_source(NULL),gf_target(NULL), k_source(K_SOURCE), k_target(K_TARGET), beta_q(BETA_Q){ }
 
    void SetGridFunctionSource(mfem::GridFunction &gf_source_) { gf_source = &gf_source_; }
    void SetGridFunctionTarget(mfem::GridFunction &gf_target_) { gf_target = &gf_target_; }

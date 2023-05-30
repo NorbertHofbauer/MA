@@ -33,9 +33,9 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
       if (ret == 0)
       {
          elem_idx = i;
-         std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
-         std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
-         std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";
+         //std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
+         //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+         //std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";
          
          break;
       }
@@ -48,6 +48,7 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
 
    double target = 0;
    double source = 0;
+   double dirichlet = 0;
    target = gfc_target.Eval(T, ip);
    source = gfc_source.Eval(*T_source, ip_source);
    //source = gf_source->GetValue(elem_idx, ip_source,1);
@@ -57,15 +58,18 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    {
       std::cout << " phys_point[ "<< i << "] " << phys_point[i];
    }
-   std::cout << "\n";
+   //std::cout << "\n";
    
    if (sdim==2)
    {
-      std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
-      std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+      //std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
+      //std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
    }
    
-   return source;
+   dirichlet = beta_t*target + (1-beta_t)*source;
+   std::cout << " dirichlet " << dirichlet << " \n";
+
+   return dirichlet;
 }
 
 double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
@@ -108,28 +112,34 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    double target = 0;
    double source = 0;
    double flux = 0;
+   double flux_source = 0;
+   double flux_target = 0;
    mfem::Vector grad_source(sdim);
+   mfem::Vector grad_target(sdim);
    mfem::Vector nhat(sdim);
    T_source->Reset();
    T_source->SetIntPoint(&ip_source);
    gf_source->GetGradient(*T_source, grad_source);
+   gf_target->GetGradient(T, grad_target);
 
-   std::cout << " height " << T_source->Jacobian().Height() << " width " << T_source->Jacobian().Width() << " \n " ;
-   std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+   //std::cout << " height " << T_source->Jacobian().Height() << " width " << T_source->Jacobian().Width() << " \n " ;
+   //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
    
-   mfem::CalcOrtho(T_source->Jacobian(), nhat);
+   //mfem::CalcOrtho(T_source->Jacobian(), nhat);
+   mfem::CalcOrtho(T.Jacobian(), nhat);
    nhat *= 1.0 / nhat.Norml1();
 
    target = gfc_target.Eval(T, ip);
    source = gfc_source.Eval(*T_source, ip_source);
    
-   std::cout << "k " << k << " source " << source << " target " << target;
+   std::cout << " source " << source << " target " << target ;
+   //std::cout << " source " << source << " target " << target << "k_source " << k_source << "k_target " << k_target;
    for (size_t i = 0; i < sdim; i++)
    {
       std::cout << " phys_point[ "<< i << "] " << phys_point[i];
    }
-   std::cout << "\n";
- 
+   //std::cout << "\n";
+ /*
    for (size_t i = 0; i < grad_source.Size(); i++)
    {
       std::cout << " grad_source[ "<< i << "] " << grad_source[i];
@@ -142,15 +152,24 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
       std::cout << " nhat[ "<< i << "] " << nhat[i];
    }
    std::cout << "\n";
-   
+   */
    for (size_t i = 0; i < sdim; i++)
    {
-      flux += grad_source[i] * nhat[i];
+      flux_source += grad_source[i] * nhat[i];
+      flux_target += grad_target[i] * nhat[i];
    }
      
-   flux *= -k;
+   flux_source *= k_source;
+   flux_target *= k_target;
+   flux = beta_q*flux_target + (1-beta_q)*flux_source;
    
    std::cout << " flux " << flux << "\n";
+   /*
+   if (sdim==2)
+   {
+      std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
+      std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+   }*/
 
    return flux;
 }

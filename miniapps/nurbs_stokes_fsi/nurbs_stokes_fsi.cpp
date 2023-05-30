@@ -32,7 +32,9 @@ int main(int argc, char *argv[])
    int vis_model = 1;         // type of the viscosity model
    // 1 Carreau
    mfem::Vector model_parameters; // array to get the model parameters
-   double relaxation = 1;
+   double relaxation = 0.3;
+   double beta_q = 0.3;
+   double beta_t = 0.3;
    int ref_levels = 0;              // standard number of refinements for the mesh
    int maxIter = 5000;
    int maxIter2 = 10;
@@ -63,7 +65,7 @@ int main(int argc, char *argv[])
    mfem::Array<int> tsiface_bdr;
    double init_temp;
    
-   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 1 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '28.5 0 28.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1
+   //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '5.5 0 5.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 20 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3
       
    // Parse command-line options.
    // input options for our executable
@@ -134,6 +136,10 @@ int main(int argc, char *argv[])
                   "Temperature interface fluid. e.g. -tfiface 2 9 6 ...",true);
    args.AddOption(&tsiface_bdr, "-tsiface", "--temperature_iface_solid", 
                   "Temperature interface solid. e.g. -tsiface 2 3 4 ...",true);   
+   args.AddOption(&beta_q, "-betaq", "--relaxation_betaq", 
+                  "Relaxation for heat transfer flux. e.g. -betaq 0.5");
+   args.AddOption(&beta_t, "-betat", "--relaxation_betat", 
+                  "Relaxation for heat transfer dirichlet. e.g. -betat 0.5");
    args.Parse();
    if (!args.Good())
    {
@@ -158,6 +164,7 @@ int main(int argc, char *argv[])
    nssolver.rtol = rtol; // convergence criteria
    nssolver.atol = atol; // convergence criteria
    nssolver.max_error = max_error;
+   nssolver.beta_q = 0.3;
    
    nssolver.set_dirichletbc_velocity_noslip(vdbc_bdr_noslip);
    nssolver.set_dirichletbc_velocity(vdbc_bdr, vdbc_bdr_values);
@@ -188,6 +195,7 @@ int main(int argc, char *argv[])
    while ((v_error_norm_l2>max_error)||(p_error_norm_l2>max_error)||(tf_error_norm_l2>max_error)||(ts_error_norm_l2>max_error))
    {  
       iter+=1;
+      nssolver.iter = iter;
       if ((iter==-1)|(iter==maxIter2))
       {
          nssolver.visualization = 1;
@@ -283,6 +291,12 @@ int main(int argc, char *argv[])
          cht_tf_error_norm_l2 = cht_tf0.Norml2();
          cht_ts_error_norm_l2 = cht_ts0.Norml2();
 
+         if ((iter==1)&&(iter2==1))
+         {
+            nssolver.calc_temperaturesystem_strongbc_solid_init(ts0, tf0, ts, tf);
+            //cht_tf0 = tf;
+            cht_ts0 = ts;
+         }
          nssolver.solve_temperature(v0,cht_tf0,cht_ts0,v,tf,ts);
 
          cht_tf0 = tf;
