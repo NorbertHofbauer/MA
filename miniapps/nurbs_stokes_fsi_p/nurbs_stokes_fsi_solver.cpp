@@ -53,39 +53,58 @@ bool NurbsStokesSolver::init()
          mesh_fluid->UniformRefinement();
       }
       mesh_fluid->PrintInfo();
+
+      pmesh_fluid = new mfem::ParMesh(MPI_COMM_WORLD, *mesh_fluid);
+      delete mesh_fluid;
+      for (int lev = 0; lev < par_ref_levels; lev++)
+      {
+         pmesh_fluid->UniformRefinement();
+      }
+      pmesh_fluid->PrintInfo();
+      if (myid == 0)
+      {
       std::cout << "Using Nurbs mesh for Fluid." << std::endl;
       std::cout << "mesh Space Dimension " << sdim << std::endl;
       std::cout << "given Mesh Order " << order[0] << std::endl;
       std::cout << "given Order elevation velocity " << order[1] << std::endl;
       std::cout << "given Order elevation pressure " << order[2] << std::endl;
       std::cout << "given Order elevation temperature " << order[3] << std::endl;
-      std::cout << "number of bdr attributes " << mesh_fluid->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
+      std::cout << "number of bdr attributes " << pmesh_fluid->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
+      }
       // fe collections
       vfec = new mfem::NURBSFECollection(order[0] + order[1]); // Pm+n
       pfec = new mfem::NURBSFECollection(order[0] + order[2]); // Pm+n
       tffec = new mfem::NURBSFECollection(order[0] + order[3]); // Pm+n
+      if (myid == 0)
+      {
       std::cout << "velocity finite element collection Order " << vfec->GetOrder() << std::endl;
       std::cout << "pressure finite element collection Order " << pfec->GetOrder() << std::endl;
       std::cout << "temperature fluid finite element collection Order " << tffec->GetOrder() << std::endl;
+      }
       // nurbsextensions
-      vNURBSext = new mfem::NURBSExtension(mesh_fluid->NURBSext, order[0]+order[1]);
-      pNURBSext = new mfem::NURBSExtension(mesh_fluid->NURBSext, order[0]+order[2]);
-      tfNURBSext = new mfem::NURBSExtension(mesh_fluid->NURBSext, order[0]+order[3]);
+      vNURBSext = new mfem::NURBSExtension(pmesh_fluid->NURBSext, order[0]+order[1]);
+      pNURBSext = new mfem::NURBSExtension(pmesh_fluid->NURBSext, order[0]+order[2]);
+      tfNURBSext = new mfem::NURBSExtension(pmesh_fluid->NURBSext, order[0]+order[3]);
 
       // declaration for our finite element spaces
-      vfes = new mfem::FiniteElementSpace(mesh_fluid, vNURBSext, vfec, sdim); // velocity finite element space, with dimension sdim
-      pfes = new mfem::FiniteElementSpace(mesh_fluid, pNURBSext, pfec);  // pressure finite element space, with dimension 1 (scalar field)
-      tffes = new mfem::FiniteElementSpace(mesh_fluid, tfNURBSext, tffec);  // temperature finite element space, with dimension 1 (scalar field)
+      vfes = new mfem::ParFiniteElementSpace(pmesh_fluid, vNURBSext, vfec, sdim); // velocity finite element space, with dimension sdim
+      pfes = new mfem::ParFiniteElementSpace(pmesh_fluid, pNURBSext, pfec);  // pressure finite element space, with dimension 1 (scalar field)
+      tffes = new mfem::ParFiniteElementSpace(pmesh_fluid, tfNURBSext, tffec);  // temperature finite element space, with dimension 1 (scalar field)
+      HYPRE_BigInt vsize = vfes->GlobalTrueVSize();
+      HYPRE_BigInt psize = pfes->GlobalTrueVSize();
+      HYPRE_BigInt tfsize = tffes->GlobalTrueVSize();
+      if (myid == 0)
+      {
       std::cout << "vfes velocity finite element space Order " << vfes->GetMaxElementOrder() << std::endl;
       std::cout << "pfes pressure finite element space Order " << pfes->GetMaxElementOrder() << std::endl;
       std::cout << "tffes temperature finite element space Order " << tffes->GetMaxElementOrder() << std::endl;
       std::cout << "Number of finite element unknowns vfes: "
-      << vfes->GetTrueVSize() << std::endl;
+      << vsize << std::endl;
       std::cout << "Number of finite element unknowns pfes: "
-      << pfes->GetTrueVSize() << std::endl;
+      << psize << std::endl;
       std::cout << "Number of finite element unknowns tffes: "
-      << tffes->GetTrueVSize() << std::endl;
-
+      << tfsize << std::endl;
+      }
       // SOLID
       // Read the mesh from the given mesh file. 
       mesh_solid = new mfem::Mesh(meshfile_solid, 1, 1);
@@ -102,23 +121,39 @@ bool NurbsStokesSolver::init()
          mesh_solid->UniformRefinement();
       }
       mesh_solid->PrintInfo();
+      pmesh_solid = new mfem::ParMesh(MPI_COMM_WORLD, *mesh_solid);
+      delete mesh_solid;
+      for (int lev = 0; lev < par_ref_levels; lev++)
+      {
+         pmesh_solid->UniformRefinement();
+      }
+      pmesh_solid->PrintInfo();
+      if (myid == 0)
+      {
       std::cout << "Using Nurbs mesh for Solid." << std::endl;
       std::cout << "mesh Space Dimension " << sdim << std::endl;
       std::cout << "given Mesh Order " << order[4] << std::endl;
       std::cout << "given Order elevation temperature " << order[5] << std::endl;
-      std::cout << "number of bdr attributes " << mesh_solid->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
+      std::cout << "number of bdr attributes " << pmesh_solid->bdr_attributes.Max() << std::endl; // output the number of boundary attributes
+      }
       // fe collections
       tsfec = new mfem::NURBSFECollection(order[4] + order[5]); // Pm+n
+      if (myid == 0)
+      {
       std::cout << "temperature solid finite element collection Order " << tsfec->GetOrder() << std::endl;
+      }
       // nurbsextensions
-      tsNURBSext = new mfem::NURBSExtension(mesh_solid->NURBSext, order[4]+order[5]);
+      tsNURBSext = new mfem::NURBSExtension(pmesh_solid->NURBSext, order[4]+order[5]);
 
       // declaration for our finite element spaces
-      tsfes = new mfem::FiniteElementSpace(mesh_solid, tsNURBSext, tsfec);  // temperature finite element space, with dimension 1 (scalar field)
+      tsfes = new mfem::ParFiniteElementSpace(pmesh_solid, tsNURBSext, tsfec);  // temperature finite element space, with dimension 1 (scalar field)
+      HYPRE_BigInt tssize = tsfes->GlobalTrueVSize();
+      if (myid == 0)
+      {
       std::cout << "tsfes temperature finite element space Order " << tsfes->GetMaxElementOrder() << std::endl;
       std::cout << "Number of finite element unknowns tsfes: "
-      << tsfes->GetTrueVSize() << std::endl;
-
+      << tssize << std::endl;
+      }
       // init the dirichlet bc
       this->init_dirichletbc();
 
@@ -164,22 +199,22 @@ bool NurbsStokesSolver::init_dirichletbc()
    MFEM_ASSERT(user_pdbc_bdr.Size() == user_pdbc_bdr_values.Size(), "number of given pressure boundaries and values does'nt match!");
    MFEM_ASSERT(user_tfdbc_bdr.Size() == user_tfdbc_bdr_values.Size(), "number of given fluid temperature boundaries and values does'nt match!");
    MFEM_ASSERT(user_tsdbc_bdr.Size() == user_tsdbc_bdr_values.Size(), "number of given solid temperature boundaries and values does'nt match!");
-   
+      
    // init our boundary markers
-   vdbc_bdr_all = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   vdbc_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max());   // to select only the set boundary markers
-   vdbc_bdr_noslip = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // to select only the boundary markers for the no slip walls
-   pdbc_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   tfdbc_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   tfdbc_bdr_all = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   tfiface_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   tsdbc_bdr = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
-   tsiface_bdr = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
-   tsdbc_bdr_all = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
-   vdummy_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   pdummy_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   tfdummy_bdr = mfem::Array<int>(mesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
-   tsdummy_bdr = mfem::Array<int>(mesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
+   vdbc_bdr_all = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   vdbc_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max());   // to select only the set boundary markers
+   vdbc_bdr_noslip = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // to select only the boundary markers for the no slip walls
+   pdbc_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tfdbc_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tfdbc_bdr_all = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tfiface_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tsdbc_bdr = mfem::Array<int>(pmesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
+   tsiface_bdr = mfem::Array<int>(pmesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
+   tsdbc_bdr_all = mfem::Array<int>(pmesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
+   vdummy_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   pdummy_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tfdummy_bdr = mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()); // contains the whole boundary markers
+   tsdummy_bdr = mfem::Array<int>(pmesh_solid->bdr_attributes.Max()); // contains the whole boundary markers
 
    //set marker
    // velocity
@@ -356,7 +391,7 @@ bool NurbsStokesSolver::set_iface_solid(mfem::Array<int> boundaries)
    return true;
 }
 
-bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0)
+bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::ParGridFunction &v0, mfem::ParGridFunction &p0, mfem::ParGridFunction &tf0)
 {
    auto lambda_inlet = [this](const mfem::Vector &QuadraturPointPosition, mfem::Vector &VelocityValue) -> void
    {
@@ -382,7 +417,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
       return;
    };
 
-   mfem::GridFunction v_bc(vfes),p_bc(pfes), tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
+   mfem::ParGridFunction v_bc(vfes),p_bc(pfes), tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
@@ -395,7 +430,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    for (size_t i = 0; i < user_vdbc_bdr.Size(); i++)
    {
-      vdbc_bdr_marker.push_back(mfem::Array<int>(mesh_fluid->bdr_attributes.Max()));
+      vdbc_bdr_marker.push_back(mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()));
       vdbc_bdr_marker[i] = 0;
       vdbc_bdr_marker[i][user_vdbc_bdr[i]-1] = 1;
 
@@ -416,7 +451,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    for (size_t i = 0; i < user_pdbc_bdr.Size(); i++)
    {
-      pdbc_bdr_marker.push_back(mfem::Array<int>(mesh_fluid->bdr_attributes.Max()));
+      pdbc_bdr_marker.push_back(mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()));
       pdbc_bdr_marker[i] = 0;
       pdbc_bdr_marker[i][user_pdbc_bdr[i]-1] = 1;
 
@@ -430,7 +465,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    for (size_t i = 0; i < user_tfdbc_bdr.Size(); i++)
    {
-      tfdbc_bdr_marker.push_back(mfem::Array<int>(mesh_fluid->bdr_attributes.Max()));
+      tfdbc_bdr_marker.push_back(mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()));
       tfdbc_bdr_marker[i] = 0;
       tfdbc_bdr_marker[i][user_tfdbc_bdr[i]-1] = 1;
 
@@ -443,9 +478,9 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    // define rhs with the desired boundary condition values
    mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet); // function for our desired boundary condition
    //mfem::FunctionCoefficient vfc_inlet(lambda_inlet2); // function for our desired boundary condition
-   mfem::LinearForm *f_bc(new mfem::LinearForm(vfes)); // define linear form for rhs
+   mfem::ParLinearForm *f_bc(new mfem::ParLinearForm(vfes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
-   mfem::BilinearForm a_bc(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ParBilinearForm *a_bc = new mfem::ParBilinearForm(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
    //f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr); // define integrator on desired boundary
    for (size_t i = 0; i < vdbc_bdr_marker.size(); i++)
@@ -453,54 +488,54 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
       f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vdbc_bdr_vectorcoefficient[i]),vdbc_bdr_marker[i]); // define integrator on desired boundary
       //f_bc->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vfc_inlet),vdbc_bdr_marker[i]); // define integrator on desired boundary
       //std::cout << user_vdbc_bdr[i] << " velocity boundary \n";
-      a_bc.AddBoundaryIntegrator(new mfem::VectorMassIntegrator(One_bc),vdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+      a_bc->AddBoundaryIntegrator(new mfem::VectorMassIntegrator(One_bc),vdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    //f_bc->AddBoundaryIntegrator(new mfem::BoundaryNormalLFIntegrator(vfc_inlet),vdbc_bdr_inlet); // define integrator on desired boundary
    f_bc->Assemble(); // assemble the linear form (vector)
-   a_bc.Assemble(); // assemble the bilinear form (matrix)
+   a_bc->Assemble(); // assemble the bilinear form (matrix)
    
    // PRESSURE
    // define rhs with the desired boundary condition values
    //mfem::ConstantCoefficient pfc_outlet(p_val); // function for our desired boundary condition
-   mfem::LinearForm *g_bc(new mfem::LinearForm(pfes)); // define linear form for rhs
+   mfem::ParLinearForm *g_bc(new mfem::ParLinearForm(pfes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
-   mfem::BilinearForm b_bc(pfes); // define the bilinear form results in n x n matrix, we use the pressure finite element space
+   mfem::ParBilinearForm *b_bc = new mfem::ParBilinearForm(pfes); // define the bilinear form results in n x n matrix, we use the pressure finite element space
    //g_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(pfc_outlet),pdbc_bdr); // define integrator on desired boundary
    for (size_t i = 0; i < pdbc_bdr_marker.size(); i++)
    {
       g_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(pdbc_bdr_coefficient[i]),pdbc_bdr_marker[i]); // define integrator on desired boundary
-      b_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),pdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+      b_bc->AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),pdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    g_bc->Assemble(); // assemble the linear form (vector)
-   b_bc.Assemble(); // assemble the bilinear form (matrix)
+   b_bc->Assemble(); // assemble the bilinear form (matrix)
 
    // TEMPERATURE
    // define rhs with the desired boundary condition values
    //mfem::ConstantCoefficient tfc_inlet(temp_1); // function for our desired boundary condition
    //mfem::ConstantCoefficient tfc_walls(temp_2); // function for our desired boundary condition
-   mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
+   mfem::ParLinearForm *h_bc(new mfem::ParLinearForm(tffes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
-   mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ParBilinearForm *d_bc = new mfem::ParBilinearForm(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    //h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_inlet),tdbc_bdr); // define integrator on desired boundary
    //h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_walls),tdbc_bdr); // define integrator on desired boundary
    for (size_t i = 0; i < tfdbc_bdr_marker.size(); i++)
    {
       h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfdbc_bdr_coefficient[i]),tfdbc_bdr_marker[i]); // define integrator on desired boundary
-      d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+      d_bc->AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    h_bc->Assemble(); // assemble the linear form (vector)   
-   d_bc.Assemble(); // assemble the bilinear form (matrix)
+   d_bc->Assemble(); // assemble the bilinear form (matrix)
 
-   mfem::SparseMatrix A_BC, B_BC, D_BC;
+   mfem::HypreParMatrix A_BC, B_BC, D_BC;
    mfem::Vector V_BC, F_BC;
    mfem::Vector P_BC, G_BC;
    mfem::Vector T_BC, H_BC;
-   a_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   a_bc.FormLinearSystem(vel_ess_tdof_list_dummy, v_bc, *f_bc, A_BC, V_BC, F_BC); // form A_BC
-   b_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   b_bc.FormLinearSystem(pres_ess_tdof_list_dummy, p_bc, *g_bc, B_BC, P_BC, G_BC); // form B_BC
-   d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d_bc.FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
+   a_bc->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   a_bc->FormLinearSystem(vel_ess_tdof_list_dummy, v_bc, *f_bc, A_BC, V_BC, F_BC); // form A_BC
+   b_bc->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   b_bc->FormLinearSystem(pres_ess_tdof_list_dummy, p_bc, *g_bc, B_BC, P_BC, G_BC); // form B_BC
+   d_bc->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d_bc->FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
     
 
    /*
@@ -563,7 +598,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    //mfem::Solver *bc_prec;
    //bc_prec = new mfem::GSSmoother();
    //bc_solver.SetPreconditioner(*bc_prec);
-   mfem::GMRESSolver bc_solver;
+   mfem::GMRESSolver bc_solver(MPI_COMM_WORLD);
    
    bc_solver.SetAbsTol(atol);
    bc_solver.SetRelTol(rtol);
@@ -589,14 +624,19 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
                 << ".\n";
    }
    //std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
-
+   a_bc->RecoverFEMSolution(V_BC, *f_bc, v_bc);
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
-      mesh_ofs.precision(8);
-      mesh_fluid->Print(mesh_ofs);
+      
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_fluid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_v_bc." << std::setfill('0') << std::setw(6) << myid;
 
-      std::ofstream v_bc_ofs(jobname + "_" +"sol_v_bc.gf");
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
+      mesh_ofs.precision(8);
+      pmesh_fluid->Print(mesh_ofs);
+
+      std::ofstream v_bc_ofs(sol_name.str().c_str());
       v_bc_ofs.precision(8);
       v_bc.Save(v_bc_ofs);
       v0.Save(v_bc_ofs);
@@ -627,14 +667,18 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
                 << ".\n";
    }
    //std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
-
+   b_bc->RecoverFEMSolution(P_BC, *g_bc, p_bc);
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
-      mesh_ofs.precision(8);
-      mesh_fluid->Print(mesh_ofs);
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_fluid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_p_bc." << std::setfill('0') << std::setw(6) << myid;
 
-      std::ofstream p_bc_ofs(jobname + "_" +"sol_p_bc.gf");
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
+      mesh_ofs.precision(8);
+      pmesh_fluid->Print(mesh_ofs);
+
+      std::ofstream p_bc_ofs(sol_name.str().c_str());
       p_bc_ofs.precision(8);
       p_bc.Save(p_bc_ofs);
       p0.Save(p_bc_ofs);
@@ -659,38 +703,56 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
                 << ".\n";
    }
    //std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
-
+   d_bc->RecoverFEMSolution(T_BC, *h_bc, tf_bc);
    // Save the mesh and the solution
-   {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
-      mesh_ofs.precision(8);
-      mesh_fluid->Print(mesh_ofs);
+   {  
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_fluid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_tf_bc." << std::setfill('0') << std::setw(6) << myid;
 
-      std::ofstream tf_bc_ofs(jobname + "_" + "sol_tf_bc.gf");
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
+      mesh_ofs.precision(8);
+      pmesh_fluid->Print(mesh_ofs);
+
+      std::ofstream tf_bc_ofs(sol_name.str().c_str());
       tf_bc_ofs.precision(8);
       tf_bc.Save(tf_bc_ofs);
       tf0.Save(tf_bc_ofs);
    }
+      // Send the solution by socket to a GLVis server.
    if (visualization)
    {
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock1(vishost, visport);
+      sol_sock1 << "parallel " << num_procs << " " << myid << "\n";
       sol_sock1.precision(8);
-      sol_sock1 << "solution\n" << *mesh_fluid << v_bc << std::flush;
+      sol_sock1 << "solution\n" << *pmesh_fluid << v_bc << std::flush;
+   }
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19917;
       mfem::socketstream sol_sock2(vishost, visport);
+      sol_sock2 << "parallel " << num_procs << " " << myid << "\n";
       sol_sock2.precision(8);
-      sol_sock2 << "solution\n" << *mesh_fluid << p_bc << std::flush;
+      sol_sock2 << "solution\n" << *pmesh_fluid << p_bc << std::flush;
+   }
+   if (visualization)
+   {
+      char vishost[] = "localhost";
+      int  visport   = 19918;
       mfem::socketstream sol_sock3(vishost, visport);
+      sol_sock3 << "parallel " << num_procs << " " << myid << "\n";
       sol_sock3.precision(8);
-      sol_sock3 << "solution\n" << *mesh_fluid << tf_bc << std::flush;
+      sol_sock3 << "solution\n" << *pmesh_fluid << tf_bc << std::flush;
    }
 
    // SET VALUES ON NO SLIP BOUNDARIES TO ZERO!!!
    mfem::Vector zerovector(2);
    zerovector = 0.0;
    mfem::VectorConstantCoefficient zero(zerovector);
-   v_bc.ProjectBdrCoefficient(zero,vdbc_bdr_noslip);
+   //v_bc.ProjectBdrCoefficient(zero,vdbc_bdr_noslip);
 
    v0=v_bc;
    p0=p_bc;
@@ -700,9 +762,9 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 }
 
 
-bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0)
+bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::ParGridFunction &tf0,mfem::ParGridFunction &ts0)
 {
-   mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
+   mfem::ParGridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
@@ -714,7 +776,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
 
    for (size_t i = 0; i < user_tfdbc_bdr.Size(); i++)
    {
-      tfdbc_bdr_marker.push_back(mfem::Array<int>(mesh_fluid->bdr_attributes.Max()));
+      tfdbc_bdr_marker.push_back(mfem::Array<int>(pmesh_fluid->bdr_attributes.Max()));
       tfdbc_bdr_marker[i] = 0;
       tfdbc_bdr_marker[i][user_tfdbc_bdr[i]-1] = 1;
 
@@ -730,25 +792,25 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    // TEMPERATURE
    // define rhs with the desired boundary condition values
    mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
-   mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
+   mfem::ParLinearForm *h_bc(new mfem::ParLinearForm(tffes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
-   mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ParBilinearForm *d_bc = new mfem::ParBilinearForm(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tfiface_bdr);
-   d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfiface_bdr);
+   d_bc->AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfiface_bdr);
    for (size_t i = 0; i < tfdbc_bdr_marker.size(); i++)
    {
       h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfdbc_bdr_coefficient[i]),tfdbc_bdr_marker[i]); // define integrator on desired boundary
-      d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+      d_bc->AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    h_bc->Assemble(); // assemble the linear form (vector)   
-   d_bc.Assemble(); // assemble the bilinear form (matrix)
+   d_bc->Assemble(); // assemble the bilinear form (matrix)
 
-   mfem::SparseMatrix D_BC;
+   mfem::HypreParMatrix D_BC;
    mfem::Vector T_BC, H_BC;
-   d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d_bc.FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
+   d_bc->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d_bc->FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
    
-   mfem::GMRESSolver bc_solver;
+   mfem::GMRESSolver bc_solver(MPI_COMM_WORLD);
    
    bc_solver.SetAbsTol(atol);
    bc_solver.SetRelTol(rtol);
@@ -758,7 +820,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    bc_solver.SetPrintLevel(3);
    // solve the system
    bc_solver.Mult(H_BC, T_BC);
-
+   
    // check if solver converged
    if (bc_solver.GetConverged())
    {
@@ -773,14 +835,19 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
                 << ".\n";
    }
    //std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
-
+   d_bc->RecoverFEMSolution(T_BC, *h_bc, tf_bc);
+   
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
-      mesh_ofs.precision(8);
-      mesh_fluid->Print(mesh_ofs);
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_fluid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_tf_bc." << std::setfill('0') << std::setw(6) << myid;
 
-      std::ofstream tf_bc_ofs(jobname + "_" +"sol_tf_bc.gf");
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
+      mesh_ofs.precision(8);
+      pmesh_fluid->Print(mesh_ofs);
+
+      std::ofstream tf_bc_ofs(sol_name.str().c_str());
       tf_bc_ofs.precision(8);
       tf_bc.Save(tf_bc_ofs);
       tf0.Save(tf_bc_ofs);
@@ -790,8 +857,9 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
+      sol_sock << "parallel " << num_procs << " " << myid << "\n";
       sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh_fluid << tf_bc << std::flush;
+      sol_sock << "solution\n" << *pmesh_fluid << tf_bc << std::flush;
    }
 
    tf0=tf_bc;
@@ -800,9 +868,9 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
 }
 
 
-bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
+bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::ParGridFunction &ts0)
 {
-   mfem::GridFunction ts_bc(tsfes); // to calculate our gridfunction on the dirichlet boundary
+   mfem::ParGridFunction ts_bc(tsfes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
@@ -814,7 +882,7 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
 
    for (size_t i = 0; i < user_tsdbc_bdr.Size(); i++)
    {
-      tsdbc_bdr_marker.push_back(mfem::Array<int>(mesh_solid->bdr_attributes.Max()));
+      tsdbc_bdr_marker.push_back(mfem::Array<int>(pmesh_solid->bdr_attributes.Max()));
       tsdbc_bdr_marker[i] = 0;
       tsdbc_bdr_marker[i][user_tsdbc_bdr[i]-1] = 1;
 
@@ -825,23 +893,23 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
    // TEMPERATURE
    // define rhs with the desired boundary condition values
    mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
-   mfem::LinearForm *h_bc(new mfem::LinearForm(tsfes)); // define linear form for rhs
+   mfem::ParLinearForm *h_bc(new mfem::ParLinearForm(tsfes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
-   mfem::BilinearForm d_bc(tsfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ParBilinearForm *d_bc = new mfem::ParBilinearForm(tsfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    for (size_t i = 0; i < tsdbc_bdr_marker.size(); i++)
    {
       h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tsdbc_bdr_coefficient[i]),tsdbc_bdr_marker[i]); // define integrator on desired boundary
-      d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tsdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
+      d_bc->AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tsdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    h_bc->Assemble(); // assemble the linear form (vector)   
-   d_bc.Assemble(); // assemble the bilinear form (matrix)
+   d_bc->Assemble(); // assemble the bilinear form (matrix)
 
-   mfem::SparseMatrix D_BC;
+   mfem::HypreParMatrix D_BC;
    mfem::Vector T_BC, H_BC;
-   d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d_bc.FormLinearSystem(temps_ess_tdof_list_dummy, ts_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
+   d_bc->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d_bc->FormLinearSystem(temps_ess_tdof_list_dummy, ts_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
    
-   mfem::GMRESSolver bc_solver;
+   mfem::GMRESSolver bc_solver(MPI_COMM_WORLD);
    
    bc_solver.SetAbsTol(atol);
    bc_solver.SetRelTol(rtol);
@@ -867,14 +935,18 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
                 << ".\n";
    }
    //std::cout << "MINRES solver took " << chrono.RealTime() << "s.\n";
-
+   d_bc->RecoverFEMSolution(T_BC, *h_bc, ts_bc);
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_solid));
-      mesh_ofs.precision(8);
-      mesh_solid->Print(mesh_ofs);
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_solid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_ts_bc." << std::setfill('0') << std::setw(6) << myid;
 
-      std::ofstream ts_bc_ofs(jobname + "_" + "sol_ts_bc.gf");
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
+      mesh_ofs.precision(8);
+      pmesh_solid->Print(mesh_ofs);
+
+      std::ofstream ts_bc_ofs(sol_name.str().c_str());
       ts_bc_ofs.precision(8);
       ts_bc.Save(ts_bc_ofs);
       ts0.Save(ts_bc_ofs);
@@ -884,8 +956,9 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
+      sol_sock << "parallel " << num_procs << " " << myid << "\n";
       sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh_solid << ts_bc << std::flush;
+      sol_sock << "solution\n" << *pmesh_solid << ts_bc << std::flush;
    }
 
    ts0=ts_bc;
@@ -893,7 +966,7 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
    return true;
 }
 
-bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf, mfem::Coefficient &kin_vis)
+bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::ParGridFunction &v0,mfem::ParGridFunction &p0, mfem::ParGridFunction &tf0, mfem::ParGridFunction &v, mfem::ParGridFunction &p, mfem::ParGridFunction &tf, mfem::Coefficient &kin_vis)
 {  
    // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
    // we need Blockoperators to define the equation system
@@ -942,7 +1015,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    vzero = 0.;
    mfem::VectorConstantCoefficient vcczero(vzero); // coefficient for source term
       
-   mfem::LinearForm *f(new mfem::LinearForm); // define linear form for rhs
+   mfem::ParLinearForm *f(new mfem::ParLinearForm); // define linear form for rhs
    f->Update(vfes, rhs_flow.GetBlock(0),0);  // link to block vector and use the velocity finite element space
    f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
    //f->AddBoundaryIntegrator(new mfem::VectorBoundaryLFIntegrator(vccpressure), vdbc_bdr);
@@ -950,7 +1023,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    
    // rhs for continuity equation
    mfem::ConstantCoefficient zero(0.0); // zero source term
-   mfem::LinearForm *g(new mfem::LinearForm); // define linear form for rhs
+   mfem::ParLinearForm *g(new mfem::ParLinearForm); // define linear form for rhs
    g->Update(pfes, rhs_flow.GetBlock(1), 0); // link to block vector and use the pressure finite element space
    g->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    g->Assemble(); // assemble the linear form (vector)
@@ -958,7 +1031,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // Momentum equation
    // diffusion term
-   mfem::BilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
+   mfem::ParBilinearForm a(vfes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
    //mfem::ConstantCoefficient kin_vis(kin_viscosity); // coefficient for the kinematic viscosity
    
    // chose viscosity model
@@ -999,7 +1072,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // grad pressure term
    // define the mixed bilinear form results in n x m matrix, we use the velocity finite element space as test space and the pressure space as trial space
-   mfem::MixedBilinearForm b(pfes,vfes); // (trial,test)
+   mfem::ParMixedBilinearForm b(pfes,vfes); // (trial,test)
    // no clue right now about the right sign
    mfem::ConstantCoefficient coef_b(1.0/density); // -1 because of the sign in the equation
    b.AddDomainIntegrator(new mfem::GradientIntegrator(coef_b)); // mixed bilinear form (lambda*nabla(u),v_vector)
@@ -1009,7 +1082,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // continuity term
    // define the mixed bilinear form results in n x m matrix, we use the pressure finite element space as test space and the velocity space as trial space
-   mfem::MixedBilinearForm c(vfes,pfes); // (trial,test)
+   mfem::ParMixedBilinearForm c(vfes,pfes); // (trial,test)
    mfem::ConstantCoefficient coef_c(1.0); // +1 because of the sign in the equation
    c.AddDomainIntegrator(new mfem::VectorDivergenceIntegrator(coef_c)); // mixed bilinear form (lambda*nabla . u_vector, v)
    c.Assemble(); // assemble the mixed bilinear form (matrix)
@@ -1017,7 +1090,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
 
    // we need some SparseMatrix and Vector to form our linear system
-   mfem::SparseMatrix A,B,C;
+   mfem::HypreParMatrix A,B,C;
    mfem::Vector V, F;
    mfem::Vector P, G;
    a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
@@ -1045,7 +1118,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    // setup minres solver, should be enough for our linear system
    // without preconditioning
    //mfem::MINRESSolver solver; 
-   mfem::GMRESSolver solver;
+   mfem::GMRESSolver solver(MPI_COMM_WORLD);
    //solver.iterative_mode = false;
    solver.SetAbsTol(atol);
    solver.SetRelTol(rtol);
@@ -1081,9 +1154,13 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // Save the mesh and the solution
    {
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_solid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_tf." << std::setfill('0') << std::setw(6) << myid;
+
       std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
-      mesh_fluid->Print(mesh_ofs);
+      pmesh_fluid->Print(mesh_ofs);
 
       std::ofstream v_ofs(jobname + "_" +"sol_v.gf");
       v_ofs.precision(8);
@@ -1099,42 +1176,42 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
       int  visport   = 19916;
       mfem::socketstream sol_sock1(vishost, visport);
       sol_sock1.precision(8);
-      sol_sock1 << "solution\n" << *mesh_fluid << v << std::flush;
+      sol_sock1 << "solution\n" << *pmesh_fluid << v << std::flush;
       mfem::socketstream sol_sock2(vishost, visport);
       sol_sock2.precision(8);
-      sol_sock2 << "solution\n" << *mesh_fluid << p << std::flush;
+      sol_sock2 << "solution\n" << *pmesh_fluid << p << std::flush;
    }
 
    return true;
 }
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &tf0,mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf,mfem::GridFunction &ts)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::ParGridFunction &v0, mfem::ParGridFunction &tf0,mfem::ParGridFunction &ts0, mfem::ParGridFunction &v, mfem::ParGridFunction &tf,mfem::ParGridFunction &ts)
 {
    // Setup bilinear and linear forms
    tf = tf0;
    // rhs for advection diffusion heat transfer
    mfem::ConstantCoefficient zero(0.0); // zero source term
-   mfem::LinearForm *h(new mfem::LinearForm(tffes)); // define linear form for rhs
+   mfem::ParLinearForm *h(new mfem::ParLinearForm(tffes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
-   mfem::BilinearForm d(tffes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   mfem::ParBilinearForm *d = new mfem::ParBilinearForm(tffes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
    mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const_fluid); // coefficient for the temp_diffusion_const
    mfem::VectorGridFunctionCoefficient v_coef;
    v_coef.SetGridFunction(&v0);
    //mfem::VectorFunctionCoefficient v_coef(sdim, lambda_velocityfield);
-   d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
-   d.AddDomainIntegrator(new mfem::ConvectionIntegrator(v_coef,1)); // 
+   d->AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
+   d->AddDomainIntegrator(new mfem::ConvectionIntegrator(v_coef,1)); // 
    //d.AddDomainIntegrator(new mfem::MixedDirectionalDerivativeIntegrator(v_coef)); // 
-   d.Assemble(); // assemble the bilinear form (matrix)
+   d->Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
-
+ 
    // we need some SparseMatrix and Vector to form our linear system
-   mfem::SparseMatrix D;
+   mfem::HypreParMatrix D;
    mfem::Vector T, H;
-   d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d.FormLinearSystem(tempf_ess_tdof_list, tf, *h, D, T, H); // form D
+   d->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d->FormLinearSystem(tempf_ess_tdof_list, tf, *h, D, T, H); // form D
  
    //D.PrintInfo(std::cout);
    //D.PrintInfo(std::cout);
@@ -1152,7 +1229,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
 
    // setup minres solver, should be enough for our linear system
    // without preconditioning
-   mfem::GMRESSolver solver;
+   mfem::GMRESSolver solver(MPI_COMM_WORLD);
    //solver.iterative_mode = false;
    
    //mfem::MINRESSolver solver;
@@ -1164,6 +1241,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
    solver.SetPrintLevel(3);
 
    std::cout << "SOLVE TEMPERATUREFIELD FLUID \n";   
+   
    // solve the system
    solver.Mult(H, tf);
    chrono.Stop();
@@ -1183,14 +1261,18 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
                 << ".\n";
    }
    std::cout << "GMRESSolver solver took " << chrono.RealTime() << "s.\n";
-
+   d->RecoverFEMSolution(T, *h, tf);
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_fluid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_tf." << std::setfill('0') << std::setw(6) << myid;
+      
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
       mesh_ofs.precision(8);
-      mesh_fluid->Print(mesh_ofs);
+      pmesh_fluid->Print(mesh_ofs);
 
-      std::ofstream tf_ofs(jobname + "_" +"sol_tf.gf");
+      std::ofstream tf_ofs(sol_name.str().c_str());
       tf_ofs.precision(8);
       tf.Save(tf_ofs);
    }
@@ -1198,14 +1280,14 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
    return true;
 }
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction &ts0,mfem::GridFunction &tf0, mfem::GridFunction &ts,mfem::GridFunction &tf, std::vector<double> &flux)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::ParGridFunction &ts0,mfem::ParGridFunction &tf0, mfem::ParGridFunction &ts,mfem::ParGridFunction &tf, std::vector<double> &flux)
 {
    // Setup bilinear and linear forms
    ts = ts0;
 
    // rhs for advection diffusion heat transfer
    mfem::ConstantCoefficient zero(0.0); // zero source term
-   mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
+   mfem::ParLinearForm *h(new mfem::ParLinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    
    InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid,temp_diffusion_const_solid,beta_q,flux);
@@ -1216,24 +1298,24 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
-   mfem::BilinearForm d(tsfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   mfem::ParBilinearForm *d = new mfem::ParBilinearForm(tsfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
    mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const_solid); // coefficient for the temp_diffusion_const
-   d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
-   d.Assemble(); // assemble the bilinear form (matrix)
+   d->AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
+   d->Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
 
    // we need some SparseMatrix and Vector to form our linear system
-   mfem::SparseMatrix D;
+   mfem::HypreParMatrix D;
    mfem::Vector T, H;
-   d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d.FormLinearSystem(temps_ess_tdof_list, ts, *h, D, T, H); // form D
+   d->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d->FormLinearSystem(temps_ess_tdof_list, ts, *h, D, T, H); // form D
     
    mfem::StopWatch chrono; // stop watch to calc solve time
    chrono.Clear();
    chrono.Start();
    
    // SOLVER
-   mfem::GMRESSolver solver;
+   mfem::GMRESSolver solver(MPI_COMM_WORLD);
    //solver.iterative_mode = false;
    
    solver.SetAbsTol(atol);
@@ -1263,14 +1345,18 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
                 << ".\n";
    }
    std::cout << "GMRESSolver solver took " << chrono.RealTime() << "s.\n";
-
+   d->RecoverFEMSolution(T, *h, ts);
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" +std::string(meshfile_solid));
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_solid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_ts." << std::setfill('0') << std::setw(6) << myid;
+      
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
       mesh_ofs.precision(8);
-      mesh_solid->Print(mesh_ofs);
+      pmesh_solid->Print(mesh_ofs);
 
-      std::ofstream ts_ofs(jobname + "_" +"sol_ts.gf");
+      std::ofstream ts_ofs(sol_name.str().c_str());
       ts_ofs.precision(8);
       ts.Save(ts_ofs);
    }
@@ -1279,21 +1365,22 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
+      sol_sock << "parallel " << num_procs << " " << myid << "\n";
       sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh_solid << ts << std::flush;
+      sol_sock << "solution\n" << *pmesh_solid << ts << std::flush;
    }
 
    return true;
 }
 
-bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::GridFunction &ts0,mfem::GridFunction &tf0, mfem::GridFunction &ts,mfem::GridFunction &tf)
+bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::ParGridFunction &ts0,mfem::ParGridFunction &tf0, mfem::ParGridFunction &ts,mfem::ParGridFunction &tf)
 {
    // Setup bilinear and linear forms
    ts = ts0;
 
    // rhs for advection diffusion heat transfer
    mfem::ConstantCoefficient zero(0.0); // zero source term
-   mfem::LinearForm *h(new mfem::LinearForm(tsfes)); // define linear form for rhs
+   mfem::ParLinearForm *h(new mfem::ParLinearForm(tsfes)); // define linear form for rhs
    h->AddDomainIntegrator(new mfem::DomainLFIntegrator(zero)); // define integrator for source term -> zero in our case
    /*
    InterfaceFluxCoefficient ifacecoef(temp_diffusion_const_fluid);
@@ -1304,24 +1391,24 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::GridFun
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
-   mfem::BilinearForm d(tsfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
+   mfem::ParBilinearForm *d = new mfem::ParBilinearForm(tsfes); // define the bilinear form results in n x n matrix, we use the temperature finite element space
    mfem::ConstantCoefficient temp_dcoeff(temp_diffusion_const_solid); // coefficient for the temp_diffusion_const
-   d.AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
-   d.Assemble(); // assemble the bilinear form (matrix)
+   d->AddDomainIntegrator(new mfem::DiffusionIntegrator(temp_dcoeff)); // bilinear form (lambda*nabla(u),nabla(v))
+   d->Assemble(); // assemble the bilinear form (matrix)
    //a.Finalize(); not needed, will be called on form linear system
 
    // we need some SparseMatrix and Vector to form our linear system
-   mfem::SparseMatrix D;
+   mfem::HypreParMatrix D;
    mfem::Vector T, H;
-   d.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
-   d.FormLinearSystem(temps_ess_tdof_list, ts, *h, D, T, H); // form D
+   d->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
+   d->FormLinearSystem(temps_ess_tdof_list, ts, *h, D, T, H); // form D
     
    mfem::StopWatch chrono; // stop watch to calc solve time
    chrono.Clear();
    chrono.Start();
    
    // SOLVER
-   mfem::GMRESSolver solver;
+   mfem::GMRESSolver solver(MPI_COMM_WORLD);
    //solver.iterative_mode = false;
    
    solver.SetAbsTol(atol);
@@ -1351,14 +1438,18 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::GridFun
                 << ".\n";
    }
    std::cout << "GMRESSolver solver took " << chrono.RealTime() << "s.\n";
-
+   d->RecoverFEMSolution(T, *h, ts);
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" +std::string(meshfile_solid));
+      std::ostringstream mesh_name, sol_name;
+      mesh_name << jobname + "_" + std::string(meshfile_solid) << "." << std::setfill('0') << std::setw(6) << myid;
+      sol_name << jobname + "_" +"sol_ts." << std::setfill('0') << std::setw(6) << myid;
+      
+      std::ofstream mesh_ofs(mesh_name.str().c_str());
       mesh_ofs.precision(8);
-      mesh_solid->Print(mesh_ofs);
+      pmesh_solid->Print(mesh_ofs);
 
-      std::ofstream ts_ofs(jobname + "_" +"sol_ts.gf");
+      std::ofstream ts_ofs(sol_name.str().c_str());
       ts_ofs.precision(8);
       ts.Save(ts_ofs);
    }
@@ -1367,15 +1458,16 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::GridFun
       char vishost[] = "localhost";
       int  visport   = 19916;
       mfem::socketstream sol_sock(vishost, visport);
+      sol_sock << "parallel " << num_procs << " " << myid << "\n";
       sol_sock.precision(8);
-      sol_sock << "solution\n" << *mesh_solid << ts << std::flush;
+      sol_sock << "solution\n" << *pmesh_solid << ts << std::flush;
    }
 
    return true;
 }
 
 
-bool NurbsStokesSolver::solve_flow(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf,mfem::Coefficient &kin_vis)
+bool NurbsStokesSolver::solve_flow(mfem::ParGridFunction &v0,mfem::ParGridFunction &p0, mfem::ParGridFunction &tf0, mfem::ParGridFunction &v, mfem::ParGridFunction &p, mfem::ParGridFunction &tf,mfem::Coefficient &kin_vis)
 {  
    if (bcstrong)
    {
@@ -1388,7 +1480,7 @@ bool NurbsStokesSolver::solve_flow(mfem::GridFunction &v0,mfem::GridFunction &p0
    return true;
 }
 
-bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunction &tf0, mfem::GridFunction &ts0, mfem::GridFunction &v, mfem::GridFunction &tf, mfem::GridFunction &ts, std::vector<double> &flux)
+bool NurbsStokesSolver::solve_temperature(mfem::ParGridFunction &v0, mfem::ParGridFunction &tf0, mfem::ParGridFunction &ts0, mfem::ParGridFunction &v, mfem::ParGridFunction &tf, mfem::ParGridFunction &ts, std::vector<double> &flux)
 {
 
    if (bcstrong)
