@@ -47,6 +47,7 @@ public:
    mfem::Array<int> user_tfiface_bdr;
    mfem::Array<int> user_tsiface_bdr;
 
+   std::string jobname; // prefix for output
    const char *meshfile_fluid; // path to meshfile fluid
    const char *meshfile_solid; // path to meshfile solid
    mfem::Mesh *mesh_fluid;  // mfem mesh object

@@ -52,14 +52,14 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    target = gfc_target.Eval(T, ip);
    source = gfc_source.Eval(*T_source, ip_source);
    //source = gf_source->GetValue(elem_idx, ip_source,1);
-   
+   /*
    std::cout << " source " << source << " target " << target;
    for (size_t i = 0; i < sdim; i++)
    {
       std::cout << " phys_point[ "<< i << "] " << phys_point[i];
    }
    //std::cout << "\n";
-   
+   */
    if (sdim==2)
    {
       //std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
@@ -67,7 +67,7 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    }
    
    dirichlet = beta_t*target + (1-beta_t)*source;
-   std::cout << " dirichlet " << dirichlet << " \n";
+   //std::cout << " dirichlet " << dirichlet << " \n";
 
    return dirichlet;
 }
@@ -133,7 +133,7 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
 
    target = gfc_target.Eval(T, ip);
    source = gfc_source.Eval(*T_source, ip_source);
-   
+   /*
    std::cout << " source " << source << " target " << target ;
    //std::cout << " source " << source << " target " << target << "k_source " << k_source << "k_target " << k_target;
    for (size_t i = 0; i < sdim; i++)
@@ -141,6 +141,7 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
       std::cout << " phys_point[ "<< i << "] " << phys_point[i];
    }
    //std::cout << "\n";
+   */
  /*
    for (size_t i = 0; i < grad_source.Size(); i++)
    {
@@ -164,9 +165,9 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    flux_source *= k_source;
    flux_target *= k_target;
    flux = beta_q*flux_target + (1-beta_q)*flux_source;
-   std::cout << " delta_flux " << (flux-flux_source);
+   //std::cout << " delta_flux " << (flux-flux_source);
    dflux->push_back(flux-flux_source);
-   std::cout << " flux " << flux << "\n";
+   //std::cout << " flux " << flux << "\n";
    /*
    if (sdim==2)
    {

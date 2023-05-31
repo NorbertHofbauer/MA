@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
    double density = 1;    // value for density
    double temp_diffusion_const_fluid = 0.1; //fluid
    double temp_diffusion_const_solid = 0.5; //fluid
+   const char *jobname = "jobname";  //jobname will be a prefix for results
    const char *mesh_file_fluid = "../../../MA/data/nurbs_fluid_domain.mesh";  //our standard test mesh
    const char *mesh_file_solid = "../../../MA/data/nurbs_solid_domain.mesh";  //our standard test mesh
    int vis_model = 1;         // type of the viscosity model
@@ -69,10 +70,15 @@ int main(int argc, char *argv[])
    double init_temp;
    
    //./nurbs_stokes_fsi -mf ../../../MA/data/nurbs_fluid_domain.mesh -ms ../../../MA/data/nurbs_solid_domain.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 2 9 6 4 7 10 12' -vdbc '3 8' -vdbc_values '5.5 0 5.5 0' -pdbc '5 11' -pdbc_values '10 10' -tfdbc '3 8' -tfdbc_values '220 220' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 6 9' -tsiface '2 3 4' -mi 10000 -mi2 20 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8
+
+   // casacade
+   //./nurbs_stokes_fsi -mf ../../../MA/data/fluid.mesh -ms ../../../MA/data/solid.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 3 4 5 12 15 14 16 18 7 9 11 10 13 24 23 26 28 17 20 22 25' -vdbc '2 6 8' -vdbc_values '5.5 0 5.5 0 5.5 0' -pdbc '27 21 19' -pdbc_values '0 0 0' -tfdbc '2 6 8' -tfdbc_values '220 220 220' -tsdbc '1 7' -tsdbc_values '250 250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '12 13' -tsiface '3 5' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8
       
    // Parse command-line options.
    // input options for our executable
    mfem::OptionsParser args(argc, argv);
+   args.AddOption(&jobname, "-job", "--jobname",
+                  "Jobname prefix for results",true);
    args.AddOption(&mesh_file_fluid, "-mf", "--mesh",
                   "Fluid mesh file to use.",true);
    args.AddOption(&mesh_file_solid, "-ms", "--mesh",
@@ -152,6 +158,7 @@ int main(int argc, char *argv[])
    args.PrintOptions(std::cout);
 
    NurbsStokesSolver nssolver;
+   nssolver.jobname = jobname;
    nssolver.meshfile_fluid = mesh_file_fluid;
    nssolver.meshfile_solid = mesh_file_solid;
    nssolver.density = density;     // density of the fluid
@@ -196,6 +203,7 @@ int main(int argc, char *argv[])
    //for (size_t i = 0; i < 28; i++)
    int iter=0;
    while ((v_error_norm>max_error)||(p_error_norm>max_error)||(tf_error_norm>max_error)||(ts_error_norm>max_error))
+   //while (false)
    {  
       iter+=1;
       nssolver.iter = iter;
@@ -256,7 +264,7 @@ int main(int argc, char *argv[])
       }else{
          MFEM_ASSERT(false, "Viscosity Model not available!");
       }
-
+            
       //v0 = (1-relaxation)*vr + relaxation*v;
       //p0 = (1-relaxation)*tr + relaxation*p;
       //v0 = v;
@@ -264,11 +272,33 @@ int main(int argc, char *argv[])
 
       for (size_t i = 0; i < vr.Size(); i++)
       {
-         v0[i] = (1-relaxation)*vr[i] + relaxation*v[i];
+         bool skip=false;
+         for (size_t ii = 0; ii < nssolver.vel_ess_tdof_list.Size(); ii++)
+         {
+            if (i==nssolver.vel_ess_tdof_list[ii])
+            {
+               skip=true;
+            }
+         }
+         if (!skip)
+         {
+            v0[i] = (1-relaxation)*vr[i] + relaxation*v[i];
+         }
       }
       for (size_t i = 0; i < pr.Size(); i++)
-      {
-         p0[i] = (1-relaxation)*pr[i] + relaxation*p[i];
+      {  
+         bool skip=false;
+         for (size_t ii = 0; ii < nssolver.pres_ess_tdof_list.Size(); ii++)
+         {
+            if (i==nssolver.pres_ess_tdof_list[ii])
+            {
+               skip=true;
+            }
+         }
+         if (!skip)
+         {
+            p0[i] = (1-relaxation)*pr[i] + relaxation*p[i];
+         }
       }
 
       vr = v0;
@@ -369,28 +399,52 @@ int main(int argc, char *argv[])
       //v = v0;
       
       for (size_t i = 0; i < tfr.Size(); i++)
-      {
-         tf0[i] = (1-relaxation)*tfr[i] + relaxation*tf[i];
+      {  
+         bool skip=false;
+         for (size_t ii = 0; ii < nssolver.tempf_ess_tdof_list.Size(); ii++)
+         {
+            if (i==nssolver.tempf_ess_tdof_list[ii])
+            {
+               skip=true;
+            }
+         }
+         if (!skip)
+         {
+            tf0[i] = (1-relaxation)*tfr[i] + relaxation*tf[i];
+         }
       }
       for (size_t i = 0; i < tsr.Size(); i++)
-      {
-         ts0[i] = (1-relaxation)*tsr[i] + relaxation*ts[i];
+      {  
+         bool skip=false;
+         for (size_t ii = 0; ii < nssolver.temps_ess_tdof_list.Size(); ii++)
+         {
+            if (i==nssolver.temps_ess_tdof_list[ii])
+            {
+               skip=true;
+            }
+         }
+         if (!skip)
+         {
+            ts0[i] = (1-relaxation)*tsr[i] + relaxation*ts[i];
+         }
       }
       //t0 = t;
       tfr = tf0;
       tsr = ts0;
       
+      /*
       v_error_norm = std::abs((v_error_norm - v0.Norml2())/v0.Norml2());
-      p_error_norm = std::abs((p_error_norm - p0.Norml2())/p0.Norml2());
+      //p_error_norm = std::abs((p_error_norm - p0.Norml2())/p0.Norml2());
+      p_error_norm = std::abs((p_error_norm - p0.Norml2()));
       tf_error_norm = std::abs((tf_error_norm - tf0.Norml2())/tf0.Norml2());
       ts_error_norm = std::abs((ts_error_norm - ts0.Norml2())/ts0.Norml2());
-
-      /*
+      */
+      
       v_error_norm = std::abs((v_error_norm - v0.Norml2()));
       p_error_norm = std::abs((p_error_norm - p0.Norml2()));
       tf_error_norm = std::abs((tf_error_norm - tf0.Norml2()));
       ts_error_norm = std::abs((ts_error_norm - ts0.Norml2()));
-      */
+      
 
       std::cout << " v_error_norm ";
       std::cout << v_error_norm << " \n";

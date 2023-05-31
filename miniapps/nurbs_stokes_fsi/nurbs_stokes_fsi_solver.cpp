@@ -501,7 +501,8 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    b_bc.FormLinearSystem(pres_ess_tdof_list_dummy, p_bc, *g_bc, B_BC, P_BC, G_BC); // form B_BC
    d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d_bc.FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
-   
+    
+
    /*
    for (size_t i = 0; i < F_BC.Size(); i++)
    {
@@ -591,11 +592,11 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("fluid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
-      std::ofstream v_bc_ofs("sol_v_bc.gf");
+      std::ofstream v_bc_ofs(jobname + "_" +"sol_v_bc.gf");
       v_bc_ofs.precision(8);
       v_bc.Save(v_bc_ofs);
       v0.Save(v_bc_ofs);
@@ -629,11 +630,11 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("fluid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
-      std::ofstream p_bc_ofs("sol_p_bc.gf");
+      std::ofstream p_bc_ofs(jobname + "_" +"sol_p_bc.gf");
       p_bc_ofs.precision(8);
       p_bc.Save(p_bc_ofs);
       p0.Save(p_bc_ofs);
@@ -661,11 +662,11 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("fluid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
-      std::ofstream tf_bc_ofs("sol_tf_bc.gf");
+      std::ofstream tf_bc_ofs(jobname + "_" + "sol_tf_bc.gf");
       tf_bc_ofs.precision(8);
       tf_bc.Save(tf_bc_ofs);
       tf0.Save(tf_bc_ofs);
@@ -775,11 +776,11 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("fluid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
-      std::ofstream tf_bc_ofs("sol_tf_bc.gf");
+      std::ofstream tf_bc_ofs(jobname + "_" +"sol_tf_bc.gf");
       tf_bc_ofs.precision(8);
       tf_bc.Save(tf_bc_ofs);
       tf0.Save(tf_bc_ofs);
@@ -869,11 +870,11 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("solid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_solid));
       mesh_ofs.precision(8);
       mesh_solid->Print(mesh_ofs);
 
-      std::ofstream ts_bc_ofs("sol_ts_bc.gf");
+      std::ofstream ts_bc_ofs(jobname + "_" + "sol_ts_bc.gf");
       ts_bc_ofs.precision(8);
       ts_bc.Save(ts_bc_ofs);
       ts0.Save(ts_bc_ofs);
@@ -940,10 +941,7 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    mfem::Vector vzero(sdim);
    vzero = 0.;
    mfem::VectorConstantCoefficient vcczero(vzero); // coefficient for source term
-   mfem::Vector vpressure(sdim);
-   vpressure = p_val;
-   mfem::VectorConstantCoefficient vccpressure(vpressure); // coefficient for source term
-   
+      
    mfem::LinearForm *f(new mfem::LinearForm); // define linear form for rhs
    f->Update(vfes, rhs_flow.GetBlock(0),0);  // link to block vector and use the velocity finite element space
    f->AddDomainIntegrator(new mfem::VectorDomainLFIntegrator(vcczero));
@@ -1024,8 +1022,8 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    mfem::Vector P, G;
    a.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    a.FormLinearSystem(vel_ess_tdof_list, v0, *f, A, V, F); // form A   
-   b.FormRectangularLinearSystem(pres_ess_tdof_list_dummy, vel_ess_tdof_list, p0, *f, B, P, F); // form B
-   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list_dummy, v0, *g, C, V, G); // form C
+   b.FormRectangularLinearSystem(pres_ess_tdof_list, vel_ess_tdof_list, p0, *f, B, P, F); // form B
+   c.FormRectangularLinearSystem(vel_ess_tdof_list, pres_ess_tdof_list, v0, *g, C, V, G); // form C
 
    mfem::BlockOperator stokesOp(block_offsets); // Block operator to build our System for the solver
 
@@ -1083,15 +1081,15 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("fluid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
-      std::ofstream v_ofs("sol_v.gf");
+      std::ofstream v_ofs(jobname + "_" +"sol_v.gf");
       v_ofs.precision(8);
       v.Save(v_ofs);
 
-      std::ofstream p_ofs("sol_p.gf");
+      std::ofstream p_ofs(jobname + "_" +"sol_p.gf");
       p_ofs.precision(8);
       p.Save(p_ofs);
    }
@@ -1188,11 +1186,11 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("fluid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
-      std::ofstream tf_ofs("sol_tf.gf");
+      std::ofstream tf_ofs(jobname + "_" +"sol_tf.gf");
       tf_ofs.precision(8);
       tf.Save(tf_ofs);
    }
@@ -1268,11 +1266,11 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("solid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" +std::string(meshfile_solid));
       mesh_ofs.precision(8);
       mesh_solid->Print(mesh_ofs);
 
-      std::ofstream ts_ofs("sol_ts.gf");
+      std::ofstream ts_ofs(jobname + "_" +"sol_ts.gf");
       ts_ofs.precision(8);
       ts.Save(ts_ofs);
    }
@@ -1356,11 +1354,11 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::GridFun
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs("solid.mesh");
+      std::ofstream mesh_ofs(jobname + "_" +std::string(meshfile_solid));
       mesh_ofs.precision(8);
       mesh_solid->Print(mesh_ofs);
 
-      std::ofstream ts_ofs("sol_ts.gf");
+      std::ofstream ts_ofs(jobname + "_" +"sol_ts.gf");
       ts_ofs.precision(8);
       ts.Save(ts_ofs);
    }
