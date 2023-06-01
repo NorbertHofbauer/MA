@@ -50,6 +50,11 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    double source = 0;
    double dirichlet = 0;
    target = gfc_target.Eval(T, ip);
+   //std::cout << " ref ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+   T_source->TransformBack(phys_point, ip_source);
+   //std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+   T_source->Reset();
+   T_source->SetIntPoint(&ip_source);
    source = gfc_source.Eval(*T_source, ip_source);
    //source = gf_source->GetValue(elem_idx, ip_source,1);
    /*
@@ -67,7 +72,7 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    }
    
    dirichlet = beta_t*target + (1-beta_t)*source;
-   //std::cout << " dirichlet " << dirichlet << " \n";
+   //std::cout << " dirichlet " << dirichlet << " \n\n";
 
    return dirichlet;
 }
@@ -117,6 +122,9 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    mfem::Vector grad_source(sdim);
    mfem::Vector grad_target(sdim);
    mfem::Vector nhat(sdim);
+   //std::cout << " ref ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+   T_source->TransformBack(phys_point, ip_source);
+   //std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
    T_source->Reset();
    T_source->SetIntPoint(&ip_source);
    T.Reset();
@@ -167,7 +175,7 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    flux = beta_q*flux_target + (1-beta_q)*flux_source;
    //std::cout << " delta_flux " << (flux-flux_source);
    dflux->push_back(flux-flux_source);
-   //std::cout << " flux " << flux << "\n";
+   //std::cout << " flux " << flux << "\n\n";
    /*
    if (sdim==2)
    {
