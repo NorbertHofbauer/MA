@@ -536,7 +536,6 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::ParGridFunction &v0, mfem::
    b_bc->FormLinearSystem(pres_ess_tdof_list_dummy, p_bc, *g_bc, B_BC, P_BC, G_BC); // form B_BC
    d_bc->SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d_bc->FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
-    
 
    /*
    for (size_t i = 0; i < F_BC.Size(); i++)
@@ -788,6 +787,10 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::ParGridFunction &tf0,mf
    InterfaceDirichletCoefficient ifacecoef(beta_t);
    ifacecoef.SetGridFunctionSource(ts0);
    ifacecoef.SetGridFunctionTarget(tf0);
+   pmesh_fluid->ExchangeFaceNbrData();
+   pmesh_solid->ExchangeFaceNbrData();
+   ts0.ExchangeFaceNbrData();
+   tf0.ExchangeFaceNbrData();
 
    // TEMPERATURE
    // define rhs with the desired boundary condition values
@@ -802,6 +805,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::ParGridFunction &tf0,mf
       h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfdbc_bdr_coefficient[i]),tfdbc_bdr_marker[i]); // define integrator on desired boundary
       d_bc->AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
+   
    h_bc->Assemble(); // assemble the linear form (vector)   
    d_bc->Assemble(); // assemble the bilinear form (matrix)
 
@@ -1243,7 +1247,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::ParGridFunct
    std::cout << "SOLVE TEMPERATUREFIELD FLUID \n";   
    
    // solve the system
-   solver.Mult(H, tf);
+   solver.Mult(H, T);
    chrono.Stop();
    //std::cout << v0;
  
@@ -1294,7 +1298,11 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::ParGridFunct
    ifacecoef.SetGridFunctionSource(tf);
    ifacecoef.SetGridFunctionTarget(ts0);
    h->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(ifacecoef), tsiface_bdr);
-   
+   pmesh_fluid->ExchangeFaceNbrData();
+   pmesh_solid->ExchangeFaceNbrData();
+   tf.ExchangeFaceNbrData();
+   ts0.ExchangeFaceNbrData();
+
    h->Assemble(); // assemble the linear form (vector)
 
    // advection diffusion heat transfer
@@ -1327,7 +1335,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::ParGridFunct
 
    std::cout << "SOLVE TEMPERATUREFIELD SOLID \n";   
    // solve the system
-   solver.Mult(H, ts);
+   solver.Mult(H, T);
    chrono.Stop();
    //std::cout << v0;
  
@@ -1418,9 +1426,9 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid_init(mfem::ParGrid
    solver.SetKDim((int)maxIter/5);
    solver.SetPrintLevel(3);
 
-   std::cout << "SOLVE TEMPERATUREFIELD SOLID \n";   
+   std::cout << "SOLVE TEMPERATUREFIELD SOLID INIT\n";   
    // solve the system
-   solver.Mult(H, ts);
+   solver.Mult(H, T);
    chrono.Stop();
    //std::cout << v0;
  

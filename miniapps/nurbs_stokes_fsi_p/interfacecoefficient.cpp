@@ -25,19 +25,41 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    mfem::IntegrationPoint ip_source;
    int elem_idx;
    mfem::ElementTransformation* T_source;
-   for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
+   for (int i=0; i<dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetNFaceNeighborElements(); ++i)
    {
-      T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
+      //T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
+      T_source = dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetFaceNbrElementTransformation(i);
       mfem::InverseElementTransformation invtran(T_source);
       ret = invtran.Transform(phys_point, ip_source);
+
+      //std::cout << "i " << i << " \n";
+      //std::cout << "nbr_e_source " << dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetGlobalElementNum(T_source->ElementNo) << " \n";
+      //std::cout << "nbr_e_target " << dynamic_cast<mfem::ParMesh*>(gf_target->FESpace()->GetMesh())->GetGlobalElementNum(T.ElementNo) << " \n";
+
       if (ret == 0)
       {
          elem_idx = i;
-         //std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
-         //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
-         //std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";
-         
          break;
+      }
+   }
+   if (elem_idx==-1)
+   {
+      for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
+         //T_source = dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetFaceNbrElementTransformation(i);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_point, ip_source);
+
+         //std::cout << "i " << i << " \n";
+         //std::cout << "e_source " << dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetGlobalElementNum(T_source->ElementNo) << " \n";
+         //std::cout << "e_target " << dynamic_cast<mfem::ParMesh*>(gf_target->FESpace()->GetMesh())->GetGlobalElementNum(T.ElementNo) << " \n";
+
+         if (ret == 0)
+         {
+            elem_idx = i;
+            break;
+         }
       }
    }
 
@@ -62,8 +84,8 @@ double InterfaceDirichletCoefficient::Eval(mfem::ElementTransformation &T,
    */
    if (sdim==2)
    {
-      //std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
-      //std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+      std::cout << " ip.x        " << ip.x <<        " ip.y        " << ip.y << "\n";
+      std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
    }
    
    dirichlet = beta_t*target + (1-beta_t)*source;
@@ -87,22 +109,58 @@ double InterfaceFluxCoefficient::Eval(mfem::ElementTransformation &T,
    //double source = gfc_source.Eval(T, ip);
    mfem::Vector phys_point;
    T.Transform(ip, phys_point);
-
+   std::cout << "######### \n";
    int ret;
    mfem::IntegrationPoint ip_source;
-   int elem_idx;
+   int elem_idx=-1;
    mfem::ElementTransformation* T_source;
-   for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
+   //for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
+   for (int i=0; i<dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetNFaceNeighborElements(); ++i)
    {
-      T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
+      //T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
+      T_source = dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetFaceNbrElementTransformation(i);
       mfem::InverseElementTransformation invtran(T_source);
       ret = invtran.Transform(phys_point, ip_source);
+
+      //std::cout << "i " << i << " \n";
+      //std::cout << "nbr_e_source " << dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetGlobalElementNum(T_source->ElementNo) << " \n";
+      //std::cout << "nbr_e_source " << dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetGlobalElementNum(T_source->ElementNo) << " \n";
+      //std::cout << "nbr_e_source " << dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetGlobalElementNum(T_source->ElementType) << " \n";
+      //std::cout << "nbr_e_target " << dynamic_cast<mfem::ParMesh*>(gf_target->FESpace()->GetMesh())->GetGlobalElementNum(T.ElementNo) << " \n";
+
       if (ret == 0)
       {
          elem_idx = i;
          break;
       }
    }
+   if (elem_idx==-1)
+   {
+      for (int i=0; i<gf_source->FESpace()->GetMesh()->GetNE(); ++i)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(i);
+         //T_source = dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetFaceNbrElementTransformation(i);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_point, ip_source);
+
+         //std::cout << "i " << i << " \n";
+         //std::cout << "e_source " << dynamic_cast<mfem::ParMesh*>(gf_source->FESpace()->GetMesh())->GetGlobalElementNum(T_source->ElementNo) << " \n";
+         //std::cout << "e_target " << dynamic_cast<mfem::ParMesh*>(gf_target->FESpace()->GetMesh())->GetGlobalElementNum(T.ElementNo) << " \n";
+
+         if (ret == 0)
+         {
+            elem_idx = i;
+            break;
+         }
+      }
+   }
+   /*
+   for (size_t i = 0; i < sdim; i++)
+   {
+      std::cout << " phys_point[ "<< i << "] " << phys_point[i];
+   }
+   */
+   std::cout << "\n";
 
    if(ret != 0){
       std::cout << "interface ret !=0 \n";
