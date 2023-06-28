@@ -77,6 +77,18 @@ int main(int argc, char *argv[])
    //cascade2
    //./nurbs_stokes_fsi -mf ../../../MA/data/fluid.mesh -ms ../../../MA/data/solid.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 3 4 5 12 15 14 16 18 7 9 11 10 13 24 23 26 28 17 20 22 25' -vdbc '2 6 8' -vdbc_values '5.5 0 5.5 0 5.5 0' -pdbc '27 21 19' -pdbc_values '0 0 0' -tfdbc '2 6 8' -tfdbc_values '220 220 220' -tsdbc '1 7' -tsdbc_values '250 250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '12 13 5 15 10 24' -tsiface '3 5 6 8 4 2' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8 -job test
 
+
+   // validation
+   // flow and visco models
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 0 -mp '200'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 1 -mp '305 0.00046 0.48'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '210 250' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 2 -mp '305 0.00046 0.48 320 153'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '210 250' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '2.8e+4 0.28 -0.025 170 10'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '210 250' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+
+   // temperature field and coupling
+
+   //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '' -tfdbc_values '' -tsdbc '4 6' -tsdbc_values '200 220' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 4' -tsiface '2 8' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+
    // Parse command-line options.
    // input options for our executable
    mfem::OptionsParser args(argc, argv);
@@ -233,7 +245,7 @@ int main(int argc, char *argv[])
          nssolver.solve_flow(v0,p0,tf0,v,p,tf,kin_vis);
       }else if (vis_model==2)
       {
-         MFEM_ASSERT(model_parameters.Size() == 5, "CarreauWLF Model needs 3 Parameters k1,k2,k3,k4,k5!");
+         MFEM_ASSERT(model_parameters.Size() == 5, "CarreauWLF Model needs 5 Parameters k1,k2,k3,k4,k5!");
          CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
          //set reference temperature on first iteration, otherwise model crashes
          if (iter==1)
@@ -250,7 +262,7 @@ int main(int argc, char *argv[])
          nssolver.solve_flow(v0,p0,tf0,v,p,tf,kin_vis);
       }else if (vis_model==3)
       {
-         MFEM_ASSERT(model_parameters.Size() == 5, "PowerLaw Model needs 4 Parameters m0,n,a,T0,shearrate0!");
+         MFEM_ASSERT(model_parameters.Size() == 5, "PowerLaw Model needs 5 Parameters m0,n,a,T0,shearrate0!");
          PowerLawModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
          if (iter==1)
          {
