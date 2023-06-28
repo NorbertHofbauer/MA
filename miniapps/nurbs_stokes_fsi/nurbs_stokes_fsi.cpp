@@ -479,6 +479,104 @@ int main(int argc, char *argv[])
    }
 
    std::cout << "NURBS STOKES END\n";
-         
+
+   // POSTPROCESSING
+   // SCALARFIELD
+   mfem::GridFunction* gf_source = new mfem::GridFunction(tf0);
+   mfem::GridFunctionCoefficient gfc_source(gf_source); 
+   int sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+
+   std::vector<mfem::Vector> phys_points;
+   for (size_t i = 0; i < 11; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = 0.5;
+      phys_point[1] = double(i)/10;
+      phys_points.push_back(phys_point);
+   }
+   
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            //std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
+            //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+            //std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";         
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "phys point not found ret !=0 \n";
+         break;
+      }
+      double source = 0;
+      //std::cout << " ref ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+      T_source->TransformBack(phys_points[i], ip_source);
+      //std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+      //std::cout << " phys_points[i][0] " << phys_points[i][0] << " phys_points[i][1] " << phys_points[i][1] << "\n";
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      source = gfc_source.Eval(*T_source, ip_source);
+      std::cout << "SOURCE " + std::to_string(source) + "\n";
+   }
+   // VECTORFIELD
+   //mfem::GridFunction* gf_source = new mfem::GridFunction(v0);
+   gf_source = new mfem::GridFunction(v0);
+   mfem::VectorGridFunctionCoefficient vgfc_source(gf_source); 
+   sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+
+   /*std::vector<mfem::Vector> phys_points;
+   for (size_t i = 0; i < 11; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = 0.5;
+      phys_point[1] = double(i)/10;
+      phys_points.push_back(phys_point);
+   }
+   */
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            //std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
+            //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+            //std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";         
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "phys point not found ret !=0 \n";
+         break;
+      }
+      mfem::Vector vsource(sdim);
+      vsource[0] = 0.;
+      vsource[1] = 0.;
+      T_source->TransformBack(phys_points[i], ip_source);
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      vgfc_source.Eval(vsource,*T_source, ip_source);
+      std::cout << "SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
+   }
+
    return 0;
 }
