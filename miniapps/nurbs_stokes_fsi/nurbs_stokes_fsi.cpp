@@ -626,7 +626,7 @@ int main(int argc, char *argv[])
    nop = 20; // number of points - 1
    y_coor = 0.5; // ycoord for extracting results
    
-   // SCALARFIELD ts0
+   // SCALARFIELD ts0 part1
    gf_source = new mfem::GridFunction(ts0);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
@@ -670,11 +670,99 @@ int main(int argc, char *argv[])
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
+   // SCALARFIELD tf0
+   gf_source = new mfem::GridFunction(tf0);
+   gfc_source = mfem::GridFunctionCoefficient(gf_source); 
+   sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+
+   phys_points.clear();
+   for (size_t i = 0; i < nop + 1; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = double(i)/double(nop);
+      phys_point[1] = y_coor;
+      phys_points.push_back(phys_point);
+   }
+   
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "phys point not found ret !=0 \n";
+         break;
+      }
+      double source = 0;
+      T_source->TransformBack(phys_points[i], ip_source);
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      source = gfc_source.Eval(*T_source, ip_source);
+      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
+   }
+
+   // SCALARFIELD ts0 part2
+   gf_source = new mfem::GridFunction(ts0);
+   gfc_source = mfem::GridFunctionCoefficient(gf_source); 
+   sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+
+   phys_points.clear();
+   for (size_t i = 0; i < nop + 1; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = 1 + double(i)/double(nop);
+      phys_point[1] = y_coor;
+      phys_points.push_back(phys_point);
+   }
+   
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "phys point not found ret !=0 \n";
+         break;
+      }
+      double source = 0;
+      T_source->TransformBack(phys_points[i], ip_source);
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      source = gfc_source.Eval(*T_source, ip_source);
+      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
+   }
+
    filename = "fsi.res";
    //std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-   output_file << "temperature\n";
-   for (size_t i = ic + 1; i < nop + ic; i++)
+   output_file << "fsi temperature\n";
+   for (size_t i = ic + 1; i < post_vector.size(); i++)
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {

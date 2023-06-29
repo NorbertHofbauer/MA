@@ -44,7 +44,7 @@ def read_fsi(filepath):
             line = fp.readline()
             cnt += 1
         print(name, " fsi scalar ",data_array)
-        #plot_scalar(data_array,name)
+        plot_scalar_fsi(data_array,name)
 
 def plot_scalar(data, name_x_axis):
     import matplotlib.pyplot as plt
@@ -87,6 +87,21 @@ def plot_vector(data, name_x_axis):
     plt.axis([x.min(), x.max(), y.min(), y.max()])
     plt.ylabel('y')
     plt.xlabel("y " + name_x_axis)
+    plt.show()
+
+def plot_scalar_fsi(data, name_y_axis):
+    import matplotlib.pyplot as plt
+    x_data = []
+    y_data = []
+    for item in data:
+        x_data.append(item[0])
+        y_data.append(item[2])
+    x = numpy.array(x_data)
+    y = numpy.array(y_data)
+    plt.plot(x,y, marker="o")
+    plt.axis([x.min(), x.max(), y.min(), y.max()])
+    plt.xlabel('x')
+    plt.ylabel(name_y_axis)
     plt.show()
 
 def main(argv):
