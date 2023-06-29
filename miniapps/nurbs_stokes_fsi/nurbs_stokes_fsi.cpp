@@ -14,6 +14,8 @@
 #include "mfem.hpp" // include mfem project
 #include "nurbs_stokes_fsi_solver.hpp"
 #include "viscosity_models.hpp"
+#include <fstream>
+#include <iostream>
 
 // we don`t want to use namespaces here, otherwise code is harder to unterstand, e.g. mfem::Vector != std::vector
 //using namespace std; // bad idea!!!!
@@ -481,17 +483,21 @@ int main(int argc, char *argv[])
    std::cout << "NURBS STOKES END\n";
 
    // POSTPROCESSING
-   // SCALARFIELD
+   int nop = 20; // number of points - 1
+   double x_coor = 0.5; // xcoord for extracting results
+   double y_coor = 0.5; // xcoord for extracting results
+   std::vector<std::vector<double>> post_vector; // vector results postprocessing 
+   // SCALARFIELD tf0
    mfem::GridFunction* gf_source = new mfem::GridFunction(tf0);
    mfem::GridFunctionCoefficient gfc_source(gf_source); 
    int sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
    std::vector<mfem::Vector> phys_points;
-   for (size_t i = 0; i < 11; i++)
+   for (size_t i = 0; i < nop + 1; i++)
    {
       mfem::Vector phys_point(sdim);
-      phys_point[0] = 0.5;
-      phys_point[1] = double(i)/10;
+      phys_point[0] = x_coor;
+      phys_point[1] = double(i)/double(nop);
       phys_points.push_back(phys_point);
    }
    
@@ -528,8 +534,9 @@ int main(int argc, char *argv[])
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
       std::cout << "SOURCE " + std::to_string(source) + "\n";
+      post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
-   // VECTORFIELD
+   // VECTORFIELD v0
    //mfem::GridFunction* gf_source = new mfem::GridFunction(v0);
    gf_source = new mfem::GridFunction(v0);
    mfem::VectorGridFunctionCoefficient vgfc_source(gf_source); 
@@ -576,7 +583,108 @@ int main(int argc, char *argv[])
       T_source->SetIntPoint(&ip_source);
       vgfc_source.Eval(vsource,*T_source, ip_source);
       std::cout << "SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
+      post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1]});
    }
+
+   std::string filename = "tf0.res";
+   std::ofstream output_file;
+   output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+   output_file << "fluid temperature\n";
+   for (size_t i = 0; i < nop + 1; i++)
+   {
+      for (size_t ii = 0; ii < post_vector[i].size(); ii++)
+      {
+         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         output_file << std::to_string(post_vector[i][ii]) << " ";
+      }
+      std::cout << "\n";
+      output_file << "\n";
+   }
+   output_file.close();
+
+   //std::string filename = "vectorfield.res";
+   filename = "v0.res";
+   int ic = 0;
+   //std::ofstream output_file;
+   output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+   output_file << "velocity\n";
+   for (size_t i = nop + 1; i < 2*nop + 2; i++)
+   {
+      for (size_t ii = 0; ii < post_vector[i].size(); ii++)
+      {
+         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         output_file << std::to_string(post_vector[i][ii]) << " ";
+      }
+      std::cout << "\n";
+      output_file << "\n";
+      ic = i;
+   }
+   output_file.close();
+
+   // FSI TEST
+   // POSTPROCESSING
+   nop = 20; // number of points - 1
+   y_coor = 0.5; // ycoord for extracting results
+   
+   // SCALARFIELD ts0
+   gf_source = new mfem::GridFunction(ts0);
+   gfc_source = mfem::GridFunctionCoefficient(gf_source); 
+   sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+
+   phys_points.clear();
+   for (size_t i = 0; i < nop + 1; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = -1 + double(i)/double(nop);
+      phys_point[1] = y_coor;
+      phys_points.push_back(phys_point);
+   }
+   
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "phys point not found ret !=0 \n";
+         break;
+      }
+      double source = 0;
+      T_source->TransformBack(phys_points[i], ip_source);
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      source = gfc_source.Eval(*T_source, ip_source);
+      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
+   }
+
+   filename = "fsi.res";
+   //std::ofstream output_file;
+   output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+   output_file << "temperature\n";
+   for (size_t i = ic + 1; i < nop + ic; i++)
+   {
+      for (size_t ii = 0; ii < post_vector[i].size(); ii++)
+      {
+         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         output_file << std::to_string(post_vector[i][ii]) << " ";
+      }
+      std::cout << "\n";
+      output_file << "\n";
+   }
+   output_file.close();
 
    return 0;
 }
