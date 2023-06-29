@@ -487,8 +487,8 @@ int main(int argc, char *argv[])
    double x_coor = 0.5; // xcoord for extracting results
    double y_coor = 0.5; // xcoord for extracting results
    std::vector<std::vector<double>> post_vector; // vector results postprocessing 
-   // SCALARFIELD tf0
-   mfem::GridFunction* gf_source = new mfem::GridFunction(tf0);
+   // SCALARFIELD tf
+   mfem::GridFunction* gf_source = new mfem::GridFunction(tf);
    mfem::GridFunctionCoefficient gfc_source(gf_source); 
    int sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -533,12 +533,12 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
-   // VECTORFIELD v0
+   // VECTORFIELD v
    //mfem::GridFunction* gf_source = new mfem::GridFunction(v0);
-   gf_source = new mfem::GridFunction(v0);
+   gf_source = new mfem::GridFunction(v0); //v got bullshit results
    mfem::VectorGridFunctionCoefficient vgfc_source(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -582,11 +582,11 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       vgfc_source.Eval(vsource,*T_source, ip_source);
-      std::cout << "SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
+      //std::cout << "SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1]});
    }
 
-   std::string filename = "tf0.res";
+   std::string filename = "tf.res";
    std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
    output_file << "fluid temperature\n";
@@ -594,16 +594,16 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       output_file << "\n";
    }
    output_file.close();
 
    //std::string filename = "vectorfield.res";
-   filename = "v0.res";
+   filename = "v.res";
    int ic = 0;
    //std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
@@ -612,10 +612,10 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       output_file << "\n";
       ic = i;
    }
@@ -626,8 +626,8 @@ int main(int argc, char *argv[])
    nop = 20; // number of points - 1
    y_coor = 0.5; // ycoord for extracting results
    
-   // SCALARFIELD ts0 part1
-   gf_source = new mfem::GridFunction(ts0);
+   // SCALARFIELD ts part1
+   gf_source = new mfem::GridFunction(ts);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -666,12 +666,12 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
-   // SCALARFIELD tf0
-   gf_source = new mfem::GridFunction(tf0);
+   // SCALARFIELD tf
+   gf_source = new mfem::GridFunction(tf);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -710,12 +710,12 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
-   // SCALARFIELD ts0 part2
-   gf_source = new mfem::GridFunction(ts0);
+   // SCALARFIELD ts part2
+   gf_source = new mfem::GridFunction(ts);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -754,7 +754,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -766,10 +766,10 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       output_file << "\n";
    }
    output_file.close();

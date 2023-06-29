@@ -13,7 +13,7 @@ def read_scalar(filepath):
             data_array.append([float(x) for x in line.split()])
             line = fp.readline()
             cnt += 1
-        print(name, " scalar ",data_array)
+        #print(name, " scalar ",data_array)
         plot_scalar(data_array,name)
 
 def read_vector(filepath):
@@ -28,7 +28,7 @@ def read_vector(filepath):
             data_array.append([float(x) for x in line.split()])
             line = fp.readline()
             cnt += 1
-        print(name, "vector ",data_array)
+        #print(name, "vector ",data_array)
         plot_vector(data_array,name)
 
 def read_fsi(filepath):
@@ -43,7 +43,7 @@ def read_fsi(filepath):
             data_array.append([float(x) for x in line.split()])
             line = fp.readline()
             cnt += 1
-        print(name, " fsi scalar ",data_array)
+        #print(name, " fsi scalar ",data_array)
         plot_scalar_fsi(data_array,name)
 
 def plot_scalar(data, name_x_axis):
@@ -113,12 +113,13 @@ def main(argv):
             sys.exit()
         elif opt in ("-i", "--inputfolder"):
             input_folder = arg
-    print ('Input tf0 file is ', input_folder + "tf0.res")
-    print ('Input v0 file is ', input_folder + "v0.res")
+    print ('Input tf file is ', input_folder + "tf.res")
+    print ('Input v file is ', input_folder + "v.res")
+    print ('Input fsi file is ', input_folder + "fsi.res")
 
     if not input_folder == '':
-        read_scalar(input_folder + "tf0.res")
-        read_vector(input_folder + "v0.res")
+        read_scalar(input_folder + "tf.res")
+        read_vector(input_folder + "v.res")
         read_fsi(input_folder + "fsi.res")
 
 if __name__ == "__main__":
