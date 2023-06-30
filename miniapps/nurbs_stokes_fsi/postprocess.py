@@ -1,5 +1,6 @@
 import sys, getopt
 import numpy
+import matplotlib.pyplot as plt
 
 def read_scalar(filepath):
     with open(filepath) as fp:
@@ -47,7 +48,6 @@ def read_fsi(filepath):
         plot_scalar_fsi(data_array,name)
 
 def plot_scalar(data, name_x_axis):
-    import matplotlib.pyplot as plt
     x_data = []
     y_data = []
     for item in data:
@@ -62,7 +62,6 @@ def plot_scalar(data, name_x_axis):
     plt.show()
 
 def plot_vector(data, name_x_axis):
-    import matplotlib.pyplot as plt
     x_data = []
     y_data = []
     for item in data:
@@ -90,7 +89,6 @@ def plot_vector(data, name_x_axis):
     plt.show()
 
 def plot_scalar_fsi(data, name_y_axis):
-    import matplotlib.pyplot as plt
     x_data = []
     y_data = []
     for item in data:
