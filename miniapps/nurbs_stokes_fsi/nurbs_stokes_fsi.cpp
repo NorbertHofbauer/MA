@@ -94,6 +94,9 @@ int main(int argc, char *argv[])
    //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '' -tfdbc_values '' -tsdbc '4 6' -tsdbc_values '200 220' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 4' -tsiface '2 8' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
    // advection only in fluid
    //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '1 2 3 4' -vdbc_values '1 1 1 1 1 1 1 1' -pdbc '' -pdbc_values '' -tfdbc '1 4' -tfdbc_values '200 220' -tsdbc '4 6' -tsdbc_values '50 70' -d 1 -tfdc 0 -tsdc 0.1 -tfiface '' -tsiface '' -mi 1000 -mi2 30 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+   // advection with step function only in fluid
+   // comment in/out at fluid temp dirichlet bc
+   //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '1 2 3 4' -vdbc_values '1 0 1 0 1 0 1 0' -pdbc '' -pdbc_values '' -tfdbc '4' -tfdbc_values '200' -tsdbc '4 6' -tsdbc_values '50 70' -d 1 -tfdc 0 -tsdc 0.1 -tfiface '' -tsiface '' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
    // ##############################
 
    // Parse command-line options.

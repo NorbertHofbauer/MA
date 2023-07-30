@@ -702,15 +702,30 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
 bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0)
 {
+
+
+   auto lambda_temperature = [this](const mfem::Vector &QuadraturPointPosition) -> double
+   {
+      double h=1;
+      double temperatureValue = 0;
+      //temperatureValue = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*user_tfdbc_bdr_values[0];
+      temperatureValue = (-QuadraturPointPosition(1) + 0.1*QuadraturPointPosition(1)*QuadraturPointPosition(1) - QuadraturPointPosition(1)*QuadraturPointPosition(1)*QuadraturPointPosition(1))*user_tfdbc_bdr_values[0];
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " t = " << temperatureValue << std::endl; 
+      return temperatureValue;
+   };
+   mfem::FunctionCoefficient fc_temperature(lambda_temperature); // function for our desired boundary condition
+
+
    mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
 
    // create vectors for coefficients and boundary markers
-
    std::vector<mfem::Array<int>> tfdbc_bdr_marker;
    std::vector<mfem::ConstantCoefficient> tfdbc_bdr_coefficient;
+   //std::vector<mfem::FunctionCoefficient> tfdbc_bdr_coefficient;
 
    for (size_t i = 0; i < user_tfdbc_bdr.Size(); i++)
    {
@@ -720,6 +735,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
 
       mfem::ConstantCoefficient cc(user_tfdbc_bdr_values[i]);
       tfdbc_bdr_coefficient.push_back(cc);
+      //tfdbc_bdr_coefficient.push_back(fc_temperature);
       //std::cout << user_tdbc_bdr_values[i] << " temperature values \n";
    }
 
