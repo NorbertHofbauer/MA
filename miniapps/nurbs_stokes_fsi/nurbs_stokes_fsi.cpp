@@ -297,11 +297,12 @@ int main(int argc, char *argv[])
       
       v_current = v;
       p_current = p;
+
       //v0 = (1-relaxation)*vr + relaxation*v;
       //p0 = (1-relaxation)*tr + relaxation*p;
       //v0 = v;
       //p0 = p;
-      /*
+      
       for (size_t i = 0; i < vr.Size(); i++)
       {
          bool skip=false;
@@ -335,7 +336,7 @@ int main(int argc, char *argv[])
 
       vr = v0;
       pr = p0;
-      */
+      
 
       nssolver.visualization = 0;
       if ((iter==-1)|(iter==maxIter2))
@@ -470,7 +471,7 @@ int main(int argc, char *argv[])
 
       nssolver.visualization = 0;
       //v = v0;
-      /*
+      
       for (size_t i = 0; i < tfr.Size(); i++)
       {  
          bool skip=false;
@@ -505,7 +506,7 @@ int main(int argc, char *argv[])
       //t0 = t;
       tfr = tf0;
       tsr = ts0;
-      */
+      
       
       /*
       v_error_norm = std::abs((v_error_norm - v0.Norml2())/v0.Norml2());
@@ -524,7 +525,7 @@ int main(int argc, char *argv[])
       //for (size_t i = 0; i < v0.Size(); i++)
       //{
          //std::cout << " flux ";
-         //std::cout <<  v_last[i]  << " --- " << v_current[i] << " \n";
+      //   std::cout <<  v_last[i]  << " --- " << v_current[i] << " \n";
       //}
 
       v_error_norm_abs = nssolver.error_norm_abs(v_last,v_current);
