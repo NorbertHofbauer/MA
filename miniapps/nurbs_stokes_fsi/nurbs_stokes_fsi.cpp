@@ -48,13 +48,27 @@ int main(int argc, char *argv[])
    int orderelevationpressure = 0;
    int orderelevationtemperature_fluid = 0;
    int orderelevationtemperature_solid = 0;
-   double v_error_norm = 1;
-   double p_error_norm = 1;
-   double tf_error_norm = 1;
-   double ts_error_norm = 1;
-   double cht_tf_error_norm = 1;
-   double cht_ts_error_norm = 1;
-   double cht_dflux_error_norm = 1;
+   //double v_error_norm = 1;
+   //double p_error_norm = 1;
+   //double tf_error_norm = 1;
+   //double ts_error_norm = 1;
+   //double cht_tf_error_norm = 1;
+   //double cht_ts_error_norm = 1;
+   //double cht_dflux_error_norm = 1;
+   double v_error_norm_abs = 1;
+   double p_error_norm_abs = 1;
+   double tf_error_norm_abs = 1;
+   double ts_error_norm_abs = 1;
+   double cht_tf_error_norm_abs = 1;
+   double cht_ts_error_norm_abs = 1;
+   double cht_dflux_error_norm_abs = 1;
+   double v_error_norm_rel = 1;
+   double p_error_norm_rel = 1;
+   double tf_error_norm_rel = 1;
+   double ts_error_norm_rel = 1;
+   double cht_tf_error_norm_rel = 1;
+   double cht_ts_error_norm_rel = 1;
+   double cht_dflux_error_norm_rel = 1;
    std::vector<double> flux0;
    std::vector<double> flux;
    double max_error = 1e-3;
@@ -78,7 +92,6 @@ int main(int argc, char *argv[])
 
    //cascade2
    //./nurbs_stokes_fsi -mf ../../../MA/data/fluid.mesh -ms ../../../MA/data/solid.mesh -r 2 -vm 3 -mp '2e+4 0.28 -0.025 170 10'  -vnos '1 3 4 5 12 15 14 16 18 7 9 11 10 13 24 23 26 28 17 20 22 25' -vdbc '2 6 8' -vdbc_values '5.5 0 5.5 0 5.5 0' -pdbc '27 21 19' -pdbc_values '0 0 0' -tfdbc '2 6 8' -tfdbc_values '220 220 220' -tsdbc '1 7' -tsdbc_values '250 250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '12 13 5 15 10 24' -tsiface '3 5 6 8 4 2' -mi 10000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8 -job test
-
 
    // validation
    // flow and visco models
@@ -134,8 +147,10 @@ int main(int argc, char *argv[])
                   "maximum Iterations for the inner solver. e.g. -mi 500");
    args.AddOption(&maxIter2, "-mi2", "--maxIteration2", 
                   "maximum Iterations for the outer loop. e.g. -mi2 10");
+   //deprecated
    args.AddOption(&max_error, "-me", "--maxError", 
-                  "convergence criteria: maximum error between iterations in the outer loop. e.g. -me 1.e-3");                  
+                  "convergence criteria: maximum error between iterations in the outer loop. e.g. -me 1.e-3");
+   // ^^^
    args.AddOption(&rtol, "-rt", "--rtol", 
                   "convergence criteria relative tolerance. e.g. -rt 1.e-6");
    args.AddOption(&atol, "-at", "--atol", 
@@ -190,7 +205,7 @@ int main(int argc, char *argv[])
 
    nssolver.rtol = rtol; // convergence criteria
    nssolver.atol = atol; // convergence criteria
-   nssolver.max_error = max_error;
+   //nssolver.max_error = max_error;
    nssolver.beta_q = 0.3;
    
    nssolver.set_dirichletbc_velocity_noslip(vdbc_bdr_noslip);
@@ -203,7 +218,9 @@ int main(int argc, char *argv[])
 
    nssolver.init();
 
-   mfem::GridFunction vr(nssolver.vfes),pr(nssolver.pfes),tfr(nssolver.tffes),tsr(nssolver.tsfes);
+   mfem::GridFunction vr(nssolver.vfes),pr(nssolver.pfes),tfr(nssolver.tffes),tsr(nssolver.tsfes); // gridfunctions needed for relaxation 
+   mfem::GridFunction v_last(nssolver.vfes),p_last(nssolver.pfes),tf_last(nssolver.tffes),ts_last(nssolver.tsfes); // gridfunctions needed for convergence of outer loop
+   mfem::GridFunction v_current(nssolver.vfes),p_current(nssolver.pfes); // gridfunctions needed for convergence of outer loop
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),tf0(nssolver.tffes),v(nssolver.vfes),p(nssolver.pfes),tf(nssolver.tffes),ts0(nssolver.tsfes),ts(nssolver.tsfes);
    mfem::GridFunction cht_tf0(nssolver.tffes),cht_ts0(nssolver.tsfes);
    nssolver.visualization = 0;
@@ -219,7 +236,8 @@ int main(int argc, char *argv[])
 
    //for (size_t i = 0; i < 28; i++)
    int iter=0;
-   while ((v_error_norm>max_error)||(p_error_norm>max_error)||(tf_error_norm>max_error)||(ts_error_norm>max_error))
+   //while ((v_error_norm>max_error)||(p_error_norm>max_error)||(tf_error_norm>max_error)||(ts_error_norm>max_error))
+   while (((v_error_norm_abs>atol)&&(v_error_norm_rel>rtol))||((p_error_norm_abs>atol)&&(p_error_norm_rel>rtol))||((tf_error_norm_abs>atol)&&(tf_error_norm_rel>rtol))||((ts_error_norm_abs>atol)&&(ts_error_norm_rel>rtol)))
    //while (false)
    {  
       iter+=1;
@@ -228,11 +246,6 @@ int main(int argc, char *argv[])
       {
          nssolver.visualization = 1;
       }
-
-      v_error_norm = v0.Norml2();
-      p_error_norm = p0.Norml2();
-      tf_error_norm = tf0.Norml2();
-      ts_error_norm = ts0.Norml2();
 
       // viscosity model - must be a mfem::coefficient or a child class from coefficient
       if (vis_model==0)
@@ -281,12 +294,14 @@ int main(int argc, char *argv[])
       }else{
          MFEM_ASSERT(false, "Viscosity Model not available!");
       }
-            
+      
+      v_current = v;
+      p_current = p;
       //v0 = (1-relaxation)*vr + relaxation*v;
       //p0 = (1-relaxation)*tr + relaxation*p;
       //v0 = v;
       //p0 = p;
-
+      /*
       for (size_t i = 0; i < vr.Size(); i++)
       {
          bool skip=false;
@@ -320,6 +335,7 @@ int main(int argc, char *argv[])
 
       vr = v0;
       pr = p0;
+      */
 
       nssolver.visualization = 0;
       if ((iter==-1)|(iter==maxIter2))
@@ -327,26 +343,34 @@ int main(int argc, char *argv[])
          nssolver.visualization = 1;
       }
       
-      cht_tf_error_norm = 1;
-      cht_ts_error_norm = 1;
-      cht_dflux_error_norm = 1;
+      //cht_tf_error_norm = 1;
+      //cht_ts_error_norm = 1;
+      //cht_dflux_error_norm = 1;
+
+      cht_tf_error_norm_abs = 1;
+      cht_ts_error_norm_abs = 1;
+      cht_dflux_error_norm_abs = 1;
+      cht_tf_error_norm_rel = 1;
+      cht_ts_error_norm_rel = 1;
+      cht_dflux_error_norm_rel = 1;
+
       flux.clear();
 
       cht_tf0 = tf0;
       cht_ts0 = ts0;
 
       int iter2 = 0;
-      while ((cht_tf_error_norm>max_error)||(cht_ts_error_norm>max_error)||(cht_dflux_error_norm>max_error))
+      while (((cht_tf_error_norm_abs>atol)&&(cht_tf_error_norm_rel>rtol))||((cht_ts_error_norm_abs>atol)&&(cht_ts_error_norm_rel>rtol))||((cht_dflux_error_norm_abs>atol)&&(cht_dflux_error_norm_rel>rtol)))
       //while ((cht_tf_error_norm>max_error)||(cht_ts_error_norm>max_error))
       {  
          iter2+=1;
                   
-         cht_tf_error_norm = cht_tf0.Norml2();
-         cht_ts_error_norm = cht_ts0.Norml2();
+         //cht_tf_error_norm = cht_tf0.Norml2();
+         //cht_ts_error_norm = cht_ts0.Norml2();
 
          if (iter2!=1)
          {  
-            cht_dflux_error_norm = 0;
+            //cht_dflux_error_norm = 0;
             flux0 = flux;
             flux.clear();
          }
@@ -357,16 +381,29 @@ int main(int argc, char *argv[])
             //cht_tf0 = tf;
             cht_ts0 = ts;
          }
+
          nssolver.solve_temperature(v0,cht_tf0,cht_ts0,v,tf,ts,flux);
+      //   for (size_t i = 0; i < v0.Size(); i++)
+      //{
+         //std::cout << " flux ";
+         //std::cout <<  v_last[i] << " --- " << v0[i]  << " --- " << v[i] << " \n";
+      //}
 
-         cht_tf0 = tf;
-         cht_ts0 = ts;
-
+         if (iter2==1)
+         {  
+            //cht_dflux_error_norm = 0;
+            flux0 = flux;
+            for (size_t i = 0; i < flux0.size(); i++)
+            {
+               flux0[i] = 0;
+            }
+         }
+         
          //cht_tf_error_norm_l2 = std::abs((cht_tf_error_norm_l2 - tf.Norml2())/tf.Norml2());
          //cht_ts_error_norm_l2 = std::abs((cht_ts_error_norm_l2 - ts.Norml2())/ts.Norml2());
-         cht_tf_error_norm = std::abs((cht_tf_error_norm - tf.Norml2()));
-         cht_ts_error_norm = std::abs((cht_ts_error_norm - ts.Norml2()));
-
+         //cht_tf_error_norm = std::abs((cht_tf_error_norm - tf.Norml2()));
+         //cht_ts_error_norm = std::abs((cht_ts_error_norm - ts.Norml2()));
+         /*
          if (iter2!=1)
          {
             for (size_t i = 0; i < flux.size(); i++)
@@ -379,13 +416,30 @@ int main(int argc, char *argv[])
                }
             }
          }
+         */
+         
+         cht_tf_error_norm_abs = nssolver.error_norm_abs(cht_tf0,tf);
+         cht_ts_error_norm_abs = nssolver.error_norm_abs(cht_ts0,ts);
+         cht_dflux_error_norm_abs = nssolver.error_norm_abs_vector(flux0,flux);
+         cht_tf_error_norm_rel = nssolver.error_norm_rel(cht_tf0,tf);
+         cht_ts_error_norm_rel = nssolver.error_norm_rel(cht_ts0,ts);
+         cht_dflux_error_norm_rel = nssolver.error_norm_rel_vector(flux0,flux);
+         
+         cht_tf0 = tf;
+         cht_ts0 = ts;
 
-         std::cout << "CHT tf_error_norm ";
-         std::cout <<  cht_tf_error_norm << " \n";
-         std::cout << "CHT ts_error_norm ";
-         std::cout <<  cht_ts_error_norm << " \n";
-         std::cout << "CHT dflux_error_norm ";
-         std::cout <<  cht_dflux_error_norm << " \n";
+         std::cout << "CHT tf_error_norm_abs ";
+         std::cout <<  cht_tf_error_norm_abs << " \n";
+         std::cout << "CHT ts_error_norm_abs ";
+         std::cout <<  cht_ts_error_norm_abs << " \n";
+         std::cout << "CHT dflux_error_norm_abs ";
+         std::cout <<  cht_dflux_error_norm_abs << " \n";
+         std::cout << "CHT tf_error_norm_rel ";
+         std::cout <<  cht_tf_error_norm_rel << " \n";
+         std::cout << "CHT ts_error_norm_rel ";
+         std::cout <<  cht_ts_error_norm_rel << " \n";
+         std::cout << "CHT dflux_error_norm_rel ";
+         std::cout <<  cht_dflux_error_norm_rel << " \n";
 
          if (iter2==100)
          {
@@ -414,7 +468,7 @@ int main(int argc, char *argv[])
 
       nssolver.visualization = 0;
       //v = v0;
-      
+      /*
       for (size_t i = 0; i < tfr.Size(); i++)
       {  
          bool skip=false;
@@ -445,9 +499,11 @@ int main(int argc, char *argv[])
             ts0[i] = (1-relaxation)*tsr[i] + relaxation*ts[i];
          }
       }
+      
       //t0 = t;
       tfr = tf0;
       tsr = ts0;
+      */
       
       /*
       v_error_norm = std::abs((v_error_norm - v0.Norml2())/v0.Norml2());
@@ -457,27 +513,58 @@ int main(int argc, char *argv[])
       ts_error_norm = std::abs((ts_error_norm - ts0.Norml2())/ts0.Norml2());
       */
       
-      v_error_norm = std::abs((v_error_norm - v0.Norml2()));
-      p_error_norm = std::abs((p_error_norm - p0.Norml2()));
-      tf_error_norm = std::abs((tf_error_norm - tf0.Norml2()));
-      ts_error_norm = std::abs((ts_error_norm - ts0.Norml2()));
-      
+      //v_error_norm = std::abs((v_error_norm - v0.Norml2()));
+      //p_error_norm = std::abs((p_error_norm - p0.Norml2()));
+      //tf_error_norm = std::abs((tf_error_norm - tf0.Norml2()));
+      //ts_error_norm = std::abs((ts_error_norm - ts0.Norml2()));
 
-      std::cout << " v_error_norm ";
-      std::cout << v_error_norm << " \n";
-      std::cout << " p_error_norm ";
-      std::cout <<  p_error_norm << " \n";
-      std::cout << " tf_error_norm ";
-      std::cout <<  tf_error_norm << " \n";
-      std::cout << " ts_error_norm ";
-      std::cout <<  ts_error_norm << " \n";
       
+      //for (size_t i = 0; i < v0.Size(); i++)
+      //{
+         //std::cout << " flux ";
+         //std::cout <<  v_last[i]  << " --- " << v_current[i] << " \n";
+      //}
+
+      v_error_norm_abs = nssolver.error_norm_abs(v_last,v_current);
+      p_error_norm_abs = nssolver.error_norm_abs(p_last,p_current);
+      v_error_norm_rel = nssolver.error_norm_rel(v_last,v_current);
+      p_error_norm_rel = nssolver.error_norm_rel(p_last,p_current);
+
+      tf_error_norm_abs = nssolver.error_norm_abs(tf_last,tf);
+      ts_error_norm_abs = nssolver.error_norm_abs(ts_last,ts);
+      tf_error_norm_rel = nssolver.error_norm_rel(tf_last,tf);
+      ts_error_norm_rel = nssolver.error_norm_rel(ts_last,ts);
+
+      std::cout << " v_error_norm_abs ";
+      std::cout << v_error_norm_abs << " \n";
+      std::cout << " p_error_norm_abs ";
+      std::cout <<  p_error_norm_abs << " \n";
+      std::cout << " tf_error_norm_abs ";
+      std::cout <<  tf_error_norm_abs << " \n";
+      std::cout << " ts_error_norm_abs ";
+      std::cout <<  ts_error_norm_abs << " \n";
+      
+      std::cout << " v_error_norm_rel ";
+      std::cout << v_error_norm_rel << " \n";
+      std::cout << " p_error_norm_rel ";
+      std::cout <<  p_error_norm_rel << " \n";
+      std::cout << " tf_error_norm_rel ";
+      std::cout <<  tf_error_norm_rel << " \n";
+      std::cout << " ts_error_norm_rel ";
+      std::cout <<  ts_error_norm_rel << " \n";
+
+      v_last = v_current;
+      p_last = p_current;
+      tf_last = tf;
+      ts_last = ts;
+
+
       std::cout << "NURBS STOKES ITERATION " + std::to_string(iter) + " END\n";
       if (iter==maxIter2)
+      //if (iter==1)
       {
          break;
-      }
-      
+      }     
    }
 
    std::cout << "NURBS STOKES END\n";

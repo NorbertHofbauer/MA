@@ -700,10 +700,8 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 }
 
 
-bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0)
+bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0,mfem::GridFunction &tf_bc)
 {
-   mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
-
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
 
@@ -794,7 +792,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
       sol_sock << "solution\n" << *mesh_fluid << tf_bc << std::flush;
    }
 
-   tf0=tf_bc;
+   //tf0=tf_bc;
 
    return true;
 }
@@ -1393,13 +1391,95 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
 
    if (bcstrong)
    {  
-      calc_dirichletbc_fluid_cht(tf0,ts0);
+      mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
+      calc_dirichletbc_fluid_cht(tf0,ts0,tf_bc);
+      //std::cout << "\n\n ## dirichlet geht \n\n";
       calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
+      //std::cout << "\n\n ##  temp f geht \n\n";
       calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf, flux);
+      //std::cout << "\n\n ##  temp s geht \n\n";
    } else if (bcweak)
    {
       /* code */
    }
    return true;
+}
+
+double NurbsStokesSolver::error_norm_abs(mfem::GridFunction &x0, mfem::GridFunction &x1)
+{
+   double norm = 1.;
+   mfem::GridFunction Res(x0);
+
+   for (size_t i = 0; i < x0.Size(); i++)
+   {  
+      Res[i] = x1[i] - x0[i];
+   }
+
+   norm = Res.Norml2();
+   //std::cout << "\n\n ##  error_norm_abs \n\n";
+   return norm;
+}
+
+double NurbsStokesSolver::error_norm_rel(mfem::GridFunction &x0, mfem::GridFunction &x1)
+{
+   double norm = 1.;  
+   mfem::GridFunction Res(x0);
+
+   for (size_t i = 0; i < x0.Size(); i++)
+   {  
+      Res[i] = x1[i] - x0[i];
+   }
+   
+   if(x1.Norml2()!=0){
+      norm = Res.Norml2()/x1.Norml2();
+   }
+   else
+   {
+      norm = Res.Norml2();
+   }
+   
+   //std::cout << "\n\n ##  error_norm_rel \n\n";
+   return norm;
+}
+
+double NurbsStokesSolver::error_norm_abs_vector(std::vector<double> &x0, std::vector<double> &x1)
+{
+   
+   double norm = 0.;
+   double norm_x1 = 0.;
+   std::vector<double> Res(x0.size());
+
+   for (size_t i = 0; i < x0.size(); i++)
+   {  
+      Res[i] = x1[i] - x0[i];
+      norm += Res[i]*Res[i];
+   }
+   
+   norm = std::sqrt(norm);
+   //std::cout << "\n\n ##  error_norm_abs_vector \n\n";
+   return norm;
+}
+
+double NurbsStokesSolver::error_norm_rel_vector(std::vector<double> &x0, std::vector<double> &x1)
+{
+   double norm = 0.;
+   double norm_x1 = 0.;
+   std::vector<double> Res(x0.size());
+
+   for (size_t i = 0; i < x0.size(); i++)
+   {  
+      Res[i] = x1[i] - x0[i];
+      norm += Res[i]*Res[i];
+      norm_x1 += x1[i] * x1[i];
+   }
+   if(std::sqrt(norm_x1!=0)){
+      norm = std::sqrt(norm)/std::sqrt(norm_x1);
+   }
+   else
+   {
+      norm = std::sqrt(norm);
+   }
+   //std::cout << "\n\n ##  error_norm_rel_vector \n\n";  
+   return norm;
 }
 ;
