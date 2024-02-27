@@ -221,6 +221,7 @@ int main(int argc, char *argv[])
    mfem::GridFunction vr(nssolver.vfes),pr(nssolver.pfes),tfr(nssolver.tffes),tsr(nssolver.tsfes); // gridfunctions needed for relaxation 
    mfem::GridFunction v_last(nssolver.vfes),p_last(nssolver.pfes),tf_last(nssolver.tffes),ts_last(nssolver.tsfes); // gridfunctions needed for convergence of outer loop
    mfem::GridFunction v_current(nssolver.vfes),p_current(nssolver.pfes),tf_current(nssolver.tffes),ts_current(nssolver.tsfes); // gridfunctions needed for convergence of outer loop
+   mfem::GridFunction cht_tf0_last(nssolver.tffes),cht_tf0_current(nssolver.tffes),cht_ts0_last(nssolver.tsfes),cht_ts0_current(nssolver.tsfes); //gridfunctions needed for convergence of inner loop
    mfem::GridFunction v0(nssolver.vfes),p0(nssolver.pfes),tf0(nssolver.tffes),v(nssolver.vfes),p(nssolver.pfes),tf(nssolver.tffes),ts0(nssolver.tsfes),ts(nssolver.tsfes);
    mfem::GridFunction cht_tf0(nssolver.tffes),cht_ts0(nssolver.tsfes);
    nssolver.visualization = 0;
@@ -359,6 +360,8 @@ int main(int argc, char *argv[])
 
       cht_tf0 = tf0;
       cht_ts0 = ts0;
+      cht_tf0_last = tf0;
+      cht_ts0_last = ts0;
       
       int iter2 = 0;
       while (((cht_tf_error_norm_abs>atol)&&(cht_tf_error_norm_rel>rtol))||((cht_ts_error_norm_abs>atol)&&(cht_ts_error_norm_rel>rtol))||((cht_dflux_error_norm_abs>atol)&&(cht_dflux_error_norm_rel>rtol)))
@@ -419,17 +422,24 @@ int main(int argc, char *argv[])
          }
          */
          
-         cht_tf_error_norm_abs = nssolver.error_norm_abs(cht_tf0,tf);
-         cht_ts_error_norm_abs = nssolver.error_norm_abs(cht_ts0,ts);
-         cht_dflux_error_norm_abs = nssolver.error_norm_abs_vector(flux0,flux);
-         cht_tf_error_norm_rel = nssolver.error_norm_rel(cht_tf0,tf);
-         cht_ts_error_norm_rel = nssolver.error_norm_rel(cht_ts0,ts);
-         cht_dflux_error_norm_rel = nssolver.error_norm_rel_vector(flux0,flux);
-         
+
+         cht_tf0_last = cht_tf0;
+         cht_ts0_last = cht_ts0; 
+         cht_tf0_current = tf;
+         cht_ts0_current = ts;
+
          cht_tf0 = tf;
          cht_ts0 = ts;
          tf_current = tf;
          ts_current = ts;
+
+         cht_tf_error_norm_abs = nssolver.error_norm_abs(cht_tf0_last,cht_tf0_current);
+         cht_ts_error_norm_abs = nssolver.error_norm_abs(cht_ts0_last,cht_ts0_current);
+         cht_dflux_error_norm_abs = nssolver.error_norm_abs_vector(flux0,flux);
+         cht_tf_error_norm_rel = nssolver.error_norm_rel(cht_tf0_last,cht_tf0_current);
+         cht_ts_error_norm_rel = nssolver.error_norm_rel(cht_ts0_last,cht_ts0_current);
+         cht_dflux_error_norm_rel = nssolver.error_norm_rel_vector(flux0,flux);
+         
 
          std::cout << "CHT tf_error_norm_abs ";
          std::cout <<  cht_tf_error_norm_abs << " \n";
