@@ -456,6 +456,24 @@ int main(int argc, char *argv[])
          
          std::cout << "CHT ITERATION " + std::to_string(iter2) + " END\n";
       
+         if (((cht_tf_error_norm_abs>atol)&&(cht_tf_error_norm_rel>rtol))||((cht_ts_error_norm_abs>atol)&&(cht_ts_error_norm_rel>rtol))||((cht_dflux_error_norm_abs>atol)&&(cht_dflux_error_norm_rel>rtol)))
+         {
+            std::cout << "TRUE all\n";
+         }else{
+            std::cout << "FALSE all\n";
+         }
+         if (((cht_tf_error_norm_abs>atol))||((cht_ts_error_norm_abs>atol))||((cht_dflux_error_norm_abs>atol)))
+         {
+            std::cout << "TRUE absolut\n";
+         }else{
+            std::cout << "FALSE absolut\n";
+         }
+         if (((cht_tf_error_norm_rel>rtol))||((cht_ts_error_norm_rel>rtol))||((cht_dflux_error_norm_rel>rtol)))
+         {
+            std::cout << "TRUE relativ\n";
+         }else{
+            std::cout << "FALSE relativ\n";
+         }
          if (iter2==100)
          {
             std::cout << " too many Interface Iterations! \n";
