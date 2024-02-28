@@ -1394,7 +1394,7 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
       mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
       calc_dirichletbc_fluid_cht(tf0,ts0,tf_bc);
       //std::cout << "\n\n ## dirichlet geht \n\n";
-      calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
+      calc_temperaturesystem_strongbc_fluid(v0, tf_bc, ts0, v, tf,ts);
       //std::cout << "\n\n ##  temp f geht \n\n";
       calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf, flux);
       //std::cout << "\n\n ##  temp s geht \n\n";
