@@ -453,7 +453,9 @@ int main(int argc, char *argv[])
          std::cout <<  cht_ts_error_norm_rel << " \n";
          std::cout << "CHT dflux_error_norm_rel ";
          std::cout <<  cht_dflux_error_norm_rel << " \n";
-
+         
+         std::cout << "CHT ITERATION " + std::to_string(iter2) + " END\n";
+      
          if (iter2==100)
          {
             std::cout << " too many Interface Iterations! \n";
@@ -573,6 +575,26 @@ int main(int argc, char *argv[])
 
 
       std::cout << "NURBS STOKES ITERATION " + std::to_string(iter) + " END\n";
+
+      if (((v_error_norm_abs>atol)&&(v_error_norm_rel>rtol))||((p_error_norm_abs>atol)&&(p_error_norm_rel>rtol))||((tf_error_norm_abs>atol)&&(tf_error_norm_rel>rtol))||((ts_error_norm_abs>atol)&&(ts_error_norm_rel>rtol)))
+      {
+         std::cout << "TRUE all\n";
+      }else{
+         std::cout << "FALSE all\n";
+      }
+      if (((v_error_norm_abs>atol))||((p_error_norm_abs>atol))||((tf_error_norm_abs>atol))||((ts_error_norm_abs>atol)))
+      {
+         std::cout << "TRUE absolut\n";
+      }else{
+         std::cout << "FALSE absolut\n";
+      }
+      if (((v_error_norm_rel>rtol))||((p_error_norm_rel>rtol))||((tf_error_norm_rel>rtol))||((ts_error_norm_rel>rtol)))
+      {
+         std::cout << "TRUE relativ\n";
+      }else{
+         std::cout << "FALSE relativ\n";
+      }
+
       if (iter==maxIter2)
       //if (iter==1)
       {

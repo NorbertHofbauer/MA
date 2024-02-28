@@ -136,7 +136,7 @@ public:
    bool set_iface_solid(mfem::Array<int> boundaries); //sets the iface boundary in solid side conditions
 
    bool calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0); // calculate our gridfunction on the dirchlet bc
-   bool calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0,mfem::GridFunction &tf_bc); // calculate our gridfunction on the dirchlet bc
+   bool calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0); // calculate our gridfunction on the dirchlet bc
    bool calc_dirichletbc_solid(mfem::GridFunction &ts0); // calculate our gridfunction on the dirchlet bc
    
    bool calc_flowsystem_strongbc(mfem::GridFunction &v0, mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf, mfem::Coefficient &kin_vis); // assemble and compute our system matrices with strong boundary conditions

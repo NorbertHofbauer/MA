@@ -700,8 +700,9 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 }
 
 
-bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0,mfem::GridFunction &tf_bc)
+bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0)
 {
+   mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
 
@@ -792,6 +793,16 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
       sol_sock << "solution\n" << *mesh_fluid << tf_bc << std::flush;
    }
 
+   for (size_t i = 0; i < tf0.Size(); i++)
+   {
+      //std::cout <<  tf0[i] << " --- " << tf_bc[i] << " \n";
+      if (tf_bc[i]!=0)
+      {
+         tf0[i] = tf_bc[i];
+         //std::cout <<  tf0[i] << " --- " << tf_bc[i] << "<--- override \n";
+      }
+      
+   }
    //tf0=tf_bc;
 
    return true;
@@ -1391,10 +1402,9 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
 
    if (bcstrong)
    {  
-      mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
-      calc_dirichletbc_fluid_cht(tf0,ts0,tf_bc);
+      calc_dirichletbc_fluid_cht(tf0,ts0);
       //std::cout << "\n\n ## dirichlet geht \n\n";
-      calc_temperaturesystem_strongbc_fluid(v0, tf_bc, ts0, v, tf,ts);
+      calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
       //std::cout << "\n\n ##  temp f geht \n\n";
       calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf, flux);
       //std::cout << "\n\n ##  temp s geht \n\n";
