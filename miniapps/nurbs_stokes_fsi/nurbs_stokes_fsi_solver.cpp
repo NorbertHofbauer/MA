@@ -744,9 +744,11 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
 
    mfem::SparseMatrix D_BC;
    mfem::Vector T_BC, H_BC;
+   
    d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d_bc.FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
    
+
    mfem::GMRESSolver bc_solver;
    
    bc_solver.SetAbsTol(atol);
@@ -756,6 +758,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    bc_solver.SetKDim((int)maxIter/5);
    bc_solver.SetPrintLevel(3);
    // solve the system
+   std::cout << "SOLVE DIRICHLET TEMPERATUREFIELD FLUID\n";
    bc_solver.Mult(H_BC, T_BC);
 
    // check if solver converged
@@ -1070,6 +1073,9 @@ bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::Gr
    
    // solve the system
    std::cout << "SOLVE FLOWFIELD \n";
+   // initial guess
+   V = v0;
+   P = p0;
    solver.Mult(rhs_flow, x_flow);
    chrono.Stop();
 
@@ -1174,7 +1180,10 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
 
    std::cout << "SOLVE TEMPERATUREFIELD FLUID \n";   
    // solve the system
-   solver.Mult(H, tf);
+   // initial guess
+   T = tf0;
+   //solver.Mult(H, tf);
+   solver.Mult(H, T);
    chrono.Stop();
    //std::cout << v0;
  
@@ -1254,7 +1263,10 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_solid(mfem::GridFunction
 
    std::cout << "SOLVE TEMPERATUREFIELD SOLID \n";   
    // solve the system
-   solver.Mult(H, ts);
+   // initial guess
+   T = ts0;
+   //solver.Mult(H, ts);
+   solver.Mult(H, T);
    chrono.Stop();
    //std::cout << v0;
  
