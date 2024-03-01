@@ -592,7 +592,7 @@ int main(int argc, char *argv[])
       ts_last = ts_current;
 
 
-      std::cout << "NURBS STOKES ITERATION " + std::to_string(iter) + " END\n";
+      std::cout << "NURBS STOKES ITERATION " + std::to_string(iter) + " END ######################################################################\n";
 
       if (((v_error_norm_abs>atol)&&(v_error_norm_rel>rtol))||((p_error_norm_abs>atol)&&(p_error_norm_rel>rtol))||((tf_error_norm_abs>atol)&&(tf_error_norm_rel>rtol))||((ts_error_norm_abs>atol)&&(ts_error_norm_rel>rtol)))
       {
