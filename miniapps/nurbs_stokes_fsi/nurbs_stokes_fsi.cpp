@@ -99,6 +99,12 @@ int main(int argc, char *argv[])
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 1 -mp '305 0.00046 0.48'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '210 250' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 2 -mp '305 0.00046 0.48 320 153'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '210 250' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '2.8e+4 0.28 -0.025 170 10'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '10' -tfdbc '1 3' -tfdbc_values '210 250' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+   //couette flow
+   // compute with p const, hardcoded!!!
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '200'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 20 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
+   //couette poiseuille flow
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '200'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '999' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 20 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
+
 
    // temperature field and coupling
 
