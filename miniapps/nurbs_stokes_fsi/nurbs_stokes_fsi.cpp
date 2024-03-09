@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '10'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 4 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '200'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 4 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
    //couette poiseuille flow
-   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '200'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '2' -pdbc_values '999' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 20 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '1'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4' -pdbc_values '1000' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 20 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
 
 
    // temperature field and coupling
@@ -632,7 +632,7 @@ int main(int argc, char *argv[])
    // POSTPROCESSING
    int nop = 20; // number of points - 1
    double x_coor = 0.5; // xcoord for extracting results
-   double y_coor = 0.5; // xcoord for extracting results
+   double y_coor = 0.5; // ycoord for extracting results
    std::vector<std::vector<double>> post_vector; // vector results postprocessing 
    // SCALARFIELD tf0
    mfem::GridFunction* gf_source = new mfem::GridFunction(tf0);
@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      std::cout << "TF0 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
    // VECTORFIELD v0
@@ -729,9 +729,61 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       vgfc_source.Eval(vsource,*T_source, ip_source);
-      std::cout << "SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
+      std::cout << "v0 SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1]});
    }
+
+   // SCALARFIELD p0
+   gf_source = new mfem::GridFunction(p0);
+   gfc_source = mfem::GridFunctionCoefficient(gf_source);
+   sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+
+   //std::vector<mfem::Vector> phys_points;
+   phys_points.clear();
+   for (size_t i = 0; i < nop + 1; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = double(i)/double(nop);
+      phys_point[1] = y_coor;
+      phys_points.push_back(phys_point);
+   }
+   
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            //std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
+            //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+            //std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";         
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "phys point not found ret !=0 \n";
+         break;
+      }
+      double source = 0;
+      //std::cout << " ref ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+      T_source->TransformBack(phys_points[i], ip_source);
+      //std::cout << " ip_source.x " << ip_source.x << " ip_source.y " << ip_source.y << "\n";
+      //std::cout << " phys_points[i][0] " << phys_points[i][0] << " phys_points[i][1] " << phys_points[i][1] << "\n";
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      source = gfc_source.Eval(*T_source, ip_source);
+      std::cout << "p0 SOURCE " + std::to_string(source) + "\n";
+      post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
+   }
+
 
    std::string filename = "tf0.res";
    std::ofstream output_file;
@@ -741,7 +793,7 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         std::cout << "tf0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
       std::cout << "\n";
@@ -759,12 +811,28 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         std::cout << "v0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
       std::cout << "\n";
       output_file << "\n";
       ic = i;
+   }
+   output_file.close();
+
+   filename = "p0.res";
+   //std::ofstream output_file;
+   output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+   output_file << "fluid pressure\n";
+   for (size_t i = 2*nop + 2; i < 3*nop + 3; i++)
+   {
+      for (size_t ii = 0; ii < post_vector[i].size(); ii++)
+      {
+         std::cout << "p0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         output_file << std::to_string(post_vector[i][ii]) << " ";
+      }
+      std::cout << "\n";
+      output_file << "\n";
    }
    output_file.close();
 
@@ -813,7 +881,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      std::cout << "ts0 part 1 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -857,7 +925,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      std::cout << "tf0 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -901,7 +969,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "SOURCE " + std::to_string(source) + "\n";
+      std::cout << "ts0 part 2 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -913,7 +981,7 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         std::cout << "fsi post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
       std::cout << "\n";
