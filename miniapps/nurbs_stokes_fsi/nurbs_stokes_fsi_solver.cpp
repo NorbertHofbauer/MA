@@ -630,7 +630,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      std::ofstream mesh_ofs(jobname + "_" + std::string("meshfile_fluid"));
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
