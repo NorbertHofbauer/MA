@@ -862,6 +862,13 @@ int main(int argc, char *argv[])
       mfem::DenseMatrix grad; // auxiliary matrix
       v0.GetVectorGradient(*T_source, grad);
 
+      //derivate
+      //mfem::GridFunction der(nssolver.vfes);
+      //v0.GetDerivative(1,1, der);
+      //mfem::GridFunction der2(nssolver.vfes);
+      //der.GetDerivative(1,1, der2);
+      //gfc_source = mfem::GridFunctionCoefficient(&der);
+
       if (vis_model==0) // newton
       {
          post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],model_parameters[0]/density,shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
@@ -871,6 +878,7 @@ int main(int argc, char *argv[])
          kin_vis.SetVelocity(v0);
          kin_vis.Eval(*T_source, ip_source);
          post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
+         //post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1),gfc_source.Eval(*T_source, ip_source)});
       }else if (vis_model==2) //carreau wlf
       {
          CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
