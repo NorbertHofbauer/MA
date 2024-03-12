@@ -72,6 +72,7 @@ double CarreauModelCoefficient::Eval(mfem::ElementTransformation &T,
    
    dynamic_viscosity = k1/std::pow((1+k2*shearrate.Calc(grad)),k3);
    kinematic_viscosity = dynamic_viscosity/density;
+   //std::cout << "kinematic_viscosity " << kinematic_viscosity << "\n";
 
    return kinematic_viscosity;
 }

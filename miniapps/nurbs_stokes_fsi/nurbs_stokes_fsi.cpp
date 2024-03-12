@@ -104,8 +104,30 @@ int main(int argc, char *argv[])
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '10'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 4 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '200'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 4 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
    //couette poiseuille flow
-   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '1'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4' -pdbc_values '1000' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 20 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-8 -rt 1e-8  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '1'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '20 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '2'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '20 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '1'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 20' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '2'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 20' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '1'  -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 2 -vm 0 -mp '1'  -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '20 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
 
+   // visco models
+   // couette
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 1 -mp '305 0.00046 0.48' -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 2 -mp '305 0.00046 0.48 320 153' -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '230 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '2.8e+4 0.28 -0.025 170 10' -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '230 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   // couette + temp
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 1 -mp '305 0.00046 0.48' -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 2 -mp '305 0.00046 0.48 320 153' -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '2.8e+4 0.28 -0.025 170 10' -vnos '1' -vdbc '3' -vdbc_values '10 0' -pdbc '4 2' -pdbc_values '0 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   // poiseuille
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 1 -mp '305 0.00046 0.48' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '200 0' -tfdbc '1 3' -tfdbc_values '230 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 2 -mp '305 0.00046 0.48 320 153' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '200 0' -tfdbc '1 3' -tfdbc_values '230 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '2.8e+4 0.28 -0.025 170 10' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '200 0' -tfdbc '1 3' -tfdbc_values '230 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   // poiseuille + temp
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 1 -mp '305 0.00046 0.48' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '200 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 2 -mp '305 0.00046 0.48 320 153' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '200 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '2.8e+4 0.28 -0.025 170 10' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '200 0' -tfdbc '1 3' -tfdbc_values '220 230' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 3 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
 
    // temperature field and coupling
 
@@ -636,7 +658,7 @@ int main(int argc, char *argv[])
    std::vector<std::vector<double>> post_vector; // vector results postprocessing 
    // SCALARFIELD tf0
    mfem::GridFunction* gf_source = new mfem::GridFunction(tf0);
-   mfem::GridFunctionCoefficient gfc_source(gf_source); 
+   mfem::GridFunctionCoefficient gfc_source(gf_source);
    int sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
    std::vector<mfem::Vector> phys_points;
@@ -669,7 +691,7 @@ int main(int argc, char *argv[])
          }
       }
       if(ret != 0){
-         std::cout << "phys point not found ret !=0 \n";
+         std::cout << "TF0 SOURCE phys point not found ret !=0 \n";
          break;
       }
       double source = 0;
@@ -680,7 +702,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "TF0 SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "TF0 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
    // VECTORFIELD v0
@@ -719,7 +741,7 @@ int main(int argc, char *argv[])
          }
       }
       if(ret != 0){
-         std::cout << "phys point not found ret !=0 \n";
+         std::cout << "v0 phys point not found ret !=0 \n";
          break;
       }
       mfem::Vector vsource(sdim);
@@ -729,7 +751,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       vgfc_source.Eval(vsource,*T_source, ip_source);
-      std::cout << "v0 SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
+      //std::cout << "v0 SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1]});
    }
 
@@ -769,7 +791,7 @@ int main(int argc, char *argv[])
          }
       }
       if(ret != 0){
-         std::cout << "phys point not found ret !=0 \n";
+         std::cout << "p0 phys point not found ret !=0 \n";
          break;
       }
       double source = 0;
@@ -780,8 +802,87 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "p0 SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "p0 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
+   }
+   
+   // VECTORFIELD viscosity x,y,v0,kin_vis,grad(v0)
+   //mfem::GridFunction* gf_source = new mfem::GridFunction(v0);
+   gf_source = new mfem::GridFunction(v0);
+   //mfem::VectorGridFunctionCoefficient vgfc_source(gf_source);
+   sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
+   
+   phys_points.clear();
+   for (size_t i = 0; i < nop + 1; i++)
+   {
+      mfem::Vector phys_point(sdim);
+      phys_point[0] = x_coor;
+      phys_point[1] = double(i)/double(nop);
+      phys_points.push_back(phys_point);
+   }
+
+   for (size_t i = 0; i < phys_points.size(); i++)
+   {
+      int ret;
+      mfem::IntegrationPoint ip_source;
+      int elem_idx;
+      mfem::ElementTransformation* T_source;
+      for (int ii=0; ii<gf_source->FESpace()->GetMesh()->GetNE(); ++ii)
+      {
+         T_source = gf_source->FESpace()->GetMesh()->GetElementTransformation(ii);
+         mfem::InverseElementTransformation invtran(T_source);
+         ret = invtran.Transform(phys_points[i], ip_source);
+         if (ret == 0)
+         {
+            elem_idx = ii;
+            //std::cout << " source " << gf_source->GetValue(elem_idx, ip_source,1) << " element " << i; 
+            //std::cout << " ElementNo " << T_source->ElementNo << " ElementType " << T_source->ElementType << " \n";
+            //std::cout << " ElementNo " << T.ElementNo << " ElementType " << T.ElementType << " \n";         
+            break;
+         }
+      }
+      if(ret != 0){
+         std::cout << "v0 phys point not found ret !=0 \n";
+         break;
+      }
+      mfem::Vector vsource(sdim);
+      vsource[0] = 0.;
+      vsource[1] = 0.;
+      T_source->TransformBack(phys_points[i], ip_source);
+      T_source->Reset();
+      T_source->SetIntPoint(&ip_source);
+      vgfc_source.Eval(vsource,*T_source, ip_source);
+      //std::cout << "v0 SOURCE[0] " + std::to_string(vsource[0]) + " SOURCE[1] " + std::to_string(vsource[1]) + "\n";
+
+      ShearRateCoefficient shearrate;
+      shearrate.SetVelocity(v0);
+
+      //get u gradient
+      mfem::DenseMatrix grad; // auxiliary matrix
+      v0.GetVectorGradient(*T_source, grad);
+
+      if (vis_model==0) // newton
+      {
+         post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],model_parameters[0]/density,shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
+      }else if (vis_model==1) // carreau
+      {
+         CarreauModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2], density);
+         kin_vis.SetVelocity(v0);
+         kin_vis.Eval(*T_source, ip_source);
+         post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
+      }else if (vis_model==2) //carreau wlf
+      {
+         CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
+         kin_vis.SetVelocity(v0);
+         kin_vis.SetTemperature(tf0);
+         post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
+      }else if (vis_model==3) // power law
+      {
+         PowerLawModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
+         kin_vis.SetVelocity(v0);
+         kin_vis.SetTemperature(tf0);
+         post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
+      }
    }
 
 
@@ -793,10 +894,10 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "tf0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "tf0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       output_file << "\n";
    }
    output_file.close();
@@ -811,10 +912,10 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "v0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "v0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       output_file << "\n";
       ic = i;
    }
@@ -828,10 +929,27 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "p0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "p0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
+      output_file << "\n";
+   }
+   output_file.close();
+
+   filename = "visco.res";
+   //std::ofstream output_file;
+   output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
+   output_file << "viscomodel " << vis_model << "\n";
+   output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy\n";
+   for (size_t i = 3*nop + 3; i < 4*nop + 4; i++)
+   {
+      for (size_t ii = 0; ii < post_vector[i].size(); ii++)
+      {
+         //std::cout << "p0 post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         output_file << std::to_string(post_vector[i][ii]) << " ";
+      }
+      //std::cout << "\n";
       output_file << "\n";
    }
    output_file.close();
@@ -873,7 +991,7 @@ int main(int argc, char *argv[])
          }
       }
       if(ret != 0){
-         std::cout << "phys point not found ret !=0 \n";
+         std::cout << "ts0 part 1 phys point not found ret !=0 \n";
          break;
       }
       double source = 0;
@@ -881,7 +999,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "ts0 part 1 SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "ts0 part 1 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -917,7 +1035,7 @@ int main(int argc, char *argv[])
          }
       }
       if(ret != 0){
-         std::cout << "phys point not found ret !=0 \n";
+         std::cout << "tf0 phys point not found ret !=0 \n";
          break;
       }
       double source = 0;
@@ -925,7 +1043,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "tf0 SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "tf0 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -961,7 +1079,7 @@ int main(int argc, char *argv[])
          }
       }
       if(ret != 0){
-         std::cout << "phys point not found ret !=0 \n";
+         std::cout << "ts0 part 2 phys point not found ret !=0 \n";
          break;
       }
       double source = 0;
@@ -969,7 +1087,7 @@ int main(int argc, char *argv[])
       T_source->Reset();
       T_source->SetIntPoint(&ip_source);
       source = gfc_source.Eval(*T_source, ip_source);
-      std::cout << "ts0 part 2 SOURCE " + std::to_string(source) + "\n";
+      //std::cout << "ts0 part 2 SOURCE " + std::to_string(source) + "\n";
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
@@ -981,10 +1099,10 @@ int main(int argc, char *argv[])
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
-         std::cout << "fsi post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
+         //std::cout << "fsi post_vector[" + std::to_string(ii)+ "] " + std::to_string(post_vector[i][ii])+ " ";
          output_file << std::to_string(post_vector[i][ii]) << " ";
       }
-      std::cout << "\n";
+      //std::cout << "\n";
       output_file << "\n";
    }
    output_file.close();
