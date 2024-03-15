@@ -71,6 +71,9 @@ bool NurbsStokesSolver::init()
       vNURBSext = new mfem::NURBSExtension(mesh_fluid->NURBSext, order[0]+order[1]);
       pNURBSext = new mfem::NURBSExtension(mesh_fluid->NURBSext, order[0]+order[2]);
       tfNURBSext = new mfem::NURBSExtension(mesh_fluid->NURBSext, order[0]+order[3]);
+      std::cout << "velocity nurbs ext Order " << vNURBSext->GetOrder() << std::endl;
+      std::cout << "pressure nurbs ext Order " << pNURBSext->GetOrder() << std::endl;
+      std::cout << "temperature nurbs ext Order " << tfNURBSext->GetOrder() << std::endl;
 
       // declaration for our finite element spaces
       vfes = new mfem::FiniteElementSpace(mesh_fluid, vNURBSext, vfec, sdim); // velocity finite element space, with dimension sdim
@@ -592,9 +595,12 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      //std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      std::ofstream mesh_ofs(jobname + "_mesh_v");
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
+      //vfes->GetMesh()->DegreeElevate(1,3);
+      //vfes->GetMesh()->Print(mesh_ofs);
 
       std::ofstream v_bc_ofs(jobname + "_" +"sol_v_bc.gf");
       v_bc_ofs.precision(8);
@@ -630,7 +636,8 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string("meshfile_fluid"));
+      //std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      std::ofstream mesh_ofs(jobname + "_mesh_p");
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
@@ -662,7 +669,8 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // Save the mesh and the solution
    {
-      std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      //std::ofstream mesh_ofs(jobname + "_" + std::string(meshfile_fluid));
+      std::ofstream mesh_ofs(jobname + "_mesh_tf");
       mesh_ofs.precision(8);
       mesh_fluid->Print(mesh_ofs);
 
