@@ -767,7 +767,7 @@ int main(int argc, char *argv[])
    {
       mfem::Vector phys_point(sdim);
       phys_point[0] = double(i)/double(nop);
-      phys_point[1] = y_coor;
+      phys_point[1] = y_coor-0.45;
       phys_points.push_back(phys_point);
    }
    
@@ -862,10 +862,18 @@ int main(int argc, char *argv[])
       mfem::DenseMatrix grad; // auxiliary matrix
       v0.GetVectorGradient(*T_source, grad);
 
-      //mfem::DenseMatrix hess; // auxiliary matrix
-      //mfem::IntegrationRule ir(1);
-      //ir.IntPoint(0) = ip_source;
-      //v0.GetHessians(0,ir,hess,1); //first entry is element nr.
+      mfem::DenseMatrix hess; // auxiliary matrix
+      mfem::IntegrationRule ir(1);
+      mfem::IntegrationPoint hess_ip;
+      mfem::GridFunction v_hess(nssolver.vfes);
+      
+      for (size_t i = 0; i < v_hess.Size(); i++)
+      {
+         v_hess[i] = v0[i];
+      }
+      T_source->TransformBack(phys_points[i],hess_ip);
+      ir.IntPoint(0) = hess_ip;
+      v_hess.GetHessians(elem_idx,ir,hess,1); //first entry is element nr.
       //derivate
       //mfem::GridFunction der(nssolver.vfes);
       //v0.GetDerivative(1,1, der);
@@ -876,6 +884,8 @@ int main(int argc, char *argv[])
       //std::cout  << std::to_string(hess(0,0)) << "\n";
       //std::cout  << std::to_string(hess(0,1)) << "\n";
       //std::cout  << std::to_string(hess(0,2)) << "\n";
+      //std::cout  << "hess   x " << std::to_string(hess_ip.x) << " y " << std::to_string(hess_ip.x) << "\n";
+      //std::cout  << "source x " << std::to_string(ip_source.x) << " y " << std::to_string(ip_source.x) << "\n";
 
       if (vis_model==0) // newton
       {
@@ -885,7 +895,7 @@ int main(int argc, char *argv[])
          CarreauModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2], density);
          kin_vis.SetVelocity(v0);
          kin_vis.Eval(*T_source, ip_source);
-         post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
+         post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1),hess(0,2)});
       }else if (vis_model==2) //carreau wlf
       {
          CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
@@ -957,8 +967,7 @@ int main(int argc, char *argv[])
    //std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
    output_file << "viscomodel " << vis_model << "\n";
-   //output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy d2u/dx2 d2u/dxdy d2u/dy2\n";
-   output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy\n";
+   output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy d2u/dy2\n";
    for (size_t i = 3*nop + 3; i < 4*nop + 4; i++)
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)

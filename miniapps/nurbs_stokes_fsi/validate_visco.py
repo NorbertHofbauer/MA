@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set Degree
-degree = 4
+degree = 3
 #set refinement
 ref = 3
 
@@ -37,7 +37,7 @@ y = file_data[:, 1:2]  # 1
 uv = file_data[:, 2:4]  # 2,3
 kin_vis = file_data[:, 4:5]  # 4
 gen_shear = file_data[:, 5:6]  # 5
-deriv = file_data[:, 6:10]  # 6,7,8,9 all derivates 
+deriv = file_data[:, 6:11]  # 6,7,8,9,10 all derivates 
 
 # Use splinepy to fit
 # See documentation here:
@@ -60,16 +60,32 @@ d2u_dy2 = velocity_field.derivative(y, [2])
 # compute missing
 K = 200000 * np.ones(len(kin_vis[:, 0]))
 # compute d2u_dy2 with solver values
-print("d2u_dy2_solver")
-for i in range(len(kin_vis[:, 0])):
- print(-K[i],1/kin_vis[i,0].ravel())
-d2u_dy2_solver = np.multiply(-K[:],1/kin_vis[:,0].ravel())
+#print("d2u_dy2_solver")
+#for i in range(len(kin_vis[:, 0])):
+# print(-K[i],1/kin_vis[i,0].ravel())
+#d2u_dy2_solver = np.multiply(-K[:],1/kin_vis[:,0].ravel())
+d2u_dy2_solver = deriv[:,4]
+# compute K_solver with solver values
+print("K_solver")
+for i in range(len(d2u_dy2_solver[:])):
+ print(np.multiply(-d2u_dy2_solver[i].ravel(),kin_vis[i,0].ravel()))
+K_solver = np.multiply(-d2u_dy2_solver[:].ravel(),kin_vis[:,0].ravel())
+
+
+# compute dyn_vis_spp with splinepy values
+k1=1786
+k2=0.054
+k3=0.73
+print("dyn_vis_spp")
+for i in range(len(du_dy[:, 0])):
+ print(np.multiply(k1,1/(1+k2*np.absolute(du_dy[i,0].ravel()))**k3))
+dyn_vis_spp = np.multiply(k1,1/(1+k2*np.absolute(du_dy[:,0].ravel()))**k3)
 
 # compute K with splinepy values
 print("K_spp")
 for i in range(len(d2u_dy2[:, 0])):
- print(np.multiply(-d2u_dy2[i, 0].ravel(),kin_vis[i,0].ravel()))
-K_spp = np.multiply(-d2u_dy2[:, 0].ravel(),kin_vis[:,0].ravel())
+ print(np.multiply(-d2u_dy2[i].ravel(),dyn_vis_spp[i].ravel()))
+K_spp = np.multiply(-d2u_dy2[:,0].ravel(),dyn_vis_spp[:].ravel())
 
 # compute error 
 error_u = np.multiply(uv[:, 0].ravel()-u_v[:, 0].ravel(),100/u_v[:, 0].ravel())
@@ -96,7 +112,12 @@ for i in range(len(d2u_dy2[:, 0])):
  #if du_dy[i,0]*du_dy[i,0] < 1e-20:
  # error_du_dy[i] = 0
 
-error_K = np.multiply(K-K_spp.ravel(),100/K_spp.ravel())
+error_eta = np.multiply(kin_vis[:,0].ravel()-dyn_vis_spp[:].ravel(),100/dyn_vis_spp[:].ravel())
+print("eta")
+for i in range(len(dyn_vis_spp)):
+ print(dyn_vis_spp[i])
+
+error_K = np.multiply(K_solver-K_spp.ravel(),100/K_spp.ravel())
 # check elementwise to catch zero values from du_dy
 print("-K")
 for i in range(len(K_spp)):
@@ -106,7 +127,7 @@ for i in range(len(K_spp)):
 
 
 # Plot
-fig, ax = plt.subplots(ncols=3,nrows=4,layout="constrained")
+fig, ax = plt.subplots(ncols=3,nrows=5,layout="constrained")
 # Velocity field
 ax[0,0].plot(y, u_v[:, 0].ravel(), '-x')
 ax[0,0].set_title("Velocity field properties")
@@ -120,11 +141,15 @@ ax[1,0].set_xlabel("y-axis")
 ax[2,0].plot(y, d2u_dy2[:, 0].ravel(), '-x')
 ax[2,0].set_ylabel("Stress-factor\n(d2u/dy2)")
 ax[2,0].set_xlabel("y-axis")
+# compute eta
+ax[3,0].plot(y, dyn_vis_spp[:].ravel(), '-x')
+ax[3,0].set_ylabel("eta")
+ax[3,0].set_xlabel("y-axis")
 # compute eta*d2u_dy2
 #plt.plot(y, np.multiply(d2u_dy2[:, 0].ravel(),kin_vis), '-x')
-ax[3,0].plot(y, -K_spp[:].ravel(), '-x')
-ax[3,0].set_ylabel("eta * (d2u/dy2)")
-ax[3,0].set_xlabel("y-axis")
+ax[4,0].plot(y, -K_spp[:].ravel(), '-x')
+ax[4,0].set_ylabel("eta * (d2u/dy2) = -K")
+ax[4,0].set_xlabel("y-axis")
 
 # Velocity field
 ax[0,1].plot(y, uv[:, 0].ravel(), '-x')
@@ -139,10 +164,14 @@ ax[1,1].set_xlabel("y-axis")
 ax[2,1].plot(y, d2u_dy2_solver[:].ravel(), '-x')
 ax[2,1].set_ylabel("Stress-factor \n(d2u/dy2)")
 ax[2,1].set_xlabel("y-axis")
-# compute eta*d2u_dy2
-ax[3,1].plot(y, -K, '-x')
-ax[3,1].set_ylabel("eta * (d2u/dy2)")
+# compute eta
+ax[3,1].plot(y, kin_vis[:,0], '-x')
+ax[3,1].set_ylabel("eta")
 ax[3,1].set_xlabel("y-axis")
+# compute eta*d2u_dy2
+ax[4,1].plot(y, -K_solver, '-x')
+ax[4,1].set_ylabel("eta * (d2u/dy2) = -K")
+ax[4,1].set_xlabel("y-axis")
 
 # Velocity field
 ax[0,2].set_title("error")
@@ -157,10 +186,14 @@ ax[1,2].set_xlabel("y-axis")
 ax[2,2].plot(y, error_d2u_dy2, '-x')
 ax[2,2].set_ylabel("d2u_dy2\nrel error %")
 ax[2,2].set_xlabel("y-axis")
-# compute eta*d2u_dy2
-ax[3,2].plot(y, error_K[:].ravel(), '-x')
-ax[3,2].set_ylabel("eta * (d2u/dy2)")
+# compute eta
+ax[3,2].plot(y, error_eta[:].ravel(), '-x')
+ax[3,2].set_ylabel("eta\nrel error %")
 ax[3,2].set_xlabel("y-axis")
+# compute eta*d2u_dy2
+ax[4,2].plot(y, error_K[:].ravel(), '-x')
+ax[4,2].set_ylabel("eta * (d2u/dy2)\nrel error %")
+ax[4,2].set_xlabel("y-axis")
 
 plt.show()
 
