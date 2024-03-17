@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
    std::cout << "NURBS STOKES END\n";
 
    // POSTPROCESSING
-   int nop = 20; // number of points - 1
+   int nop = 20 + 40; // number of points - 1
    double x_coor = 0.5; // xcoord for extracting results
    double y_coor = 0.5; // ycoord for extracting results
    std::vector<std::vector<double>> post_vector; // vector results postprocessing 
@@ -862,12 +862,20 @@ int main(int argc, char *argv[])
       mfem::DenseMatrix grad; // auxiliary matrix
       v0.GetVectorGradient(*T_source, grad);
 
+      //mfem::DenseMatrix hess; // auxiliary matrix
+      //mfem::IntegrationRule ir(1);
+      //ir.IntPoint(0) = ip_source;
+      //v0.GetHessians(0,ir,hess,1); //first entry is element nr.
       //derivate
       //mfem::GridFunction der(nssolver.vfes);
       //v0.GetDerivative(1,1, der);
       //mfem::GridFunction der2(nssolver.vfes);
       //der.GetDerivative(1,1, der2);
       //gfc_source = mfem::GridFunctionCoefficient(&der);
+      //std::cout << "hessian\n";
+      //std::cout  << std::to_string(hess(0,0)) << "\n";
+      //std::cout  << std::to_string(hess(0,1)) << "\n";
+      //std::cout  << std::to_string(hess(0,2)) << "\n";
 
       if (vis_model==0) // newton
       {
@@ -878,7 +886,6 @@ int main(int argc, char *argv[])
          kin_vis.SetVelocity(v0);
          kin_vis.Eval(*T_source, ip_source);
          post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1)});
-         //post_vector.push_back({phys_points[i][0],phys_points[i][1],vsource[0],vsource[1],kin_vis.Eval(*T_source, ip_source),shearrate.Eval(*T_source, ip_source),grad(0,0),grad(0,1),grad(1,0),grad(1,1),gfc_source.Eval(*T_source, ip_source)});
       }else if (vis_model==2) //carreau wlf
       {
          CarreauWLFModelCoefficient kin_vis(model_parameters[0],model_parameters[1],model_parameters[2],model_parameters[3],model_parameters[4], density);
@@ -950,6 +957,7 @@ int main(int argc, char *argv[])
    //std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
    output_file << "viscomodel " << vis_model << "\n";
+   //output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy d2u/dx2 d2u/dxdy d2u/dy2\n";
    output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy\n";
    for (size_t i = 3*nop + 3; i < 4*nop + 4; i++)
    {

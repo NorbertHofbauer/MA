@@ -52,6 +52,7 @@ bool NurbsStokesSolver::init()
       {
          mesh_fluid->UniformRefinement();
       }
+      //mesh_fluid->DegreeElevate(1,3);
       mesh_fluid->PrintInfo();
       std::cout << "Using Nurbs mesh for Fluid." << std::endl;
       std::cout << "mesh Space Dimension " << sdim << std::endl;
