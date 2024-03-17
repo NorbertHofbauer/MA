@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set Degree
-degree = 3
+degree = 4
 #set refinement
-ref = 3
+ref = 4
 
 # Recreate the geometry from file (as far as I understand)
 geometry = spp.helpme.create.box(1, 1).bspline
@@ -26,11 +26,18 @@ velocity_field = spp.BSpline(
     control_points=np.ones((len(knot_vector) - degree - 1, 2))
 )
 
+# Read Data from file
+visco_model_data = np.genfromtxt(
+    "/home/user/MA/build/miniapps/nurbs_stokes_fsi/visco.res",
+    skip_header=1,max_rows=1
+)
+visco_model = visco_model_data[0:1]
+mp = visco_model_data[1:6]
 
 # Read Data from file
 file_data = np.genfromtxt(
     "/home/user/MA/build/miniapps/nurbs_stokes_fsi/visco.res",
-    skip_header=2  # First two lines are supplementary info
+    skip_header=3  # First three lines are supplementary info
 )
 x = file_data[:, 0:1]  # 0
 y = file_data[:, 1:2]  # 1
@@ -73,16 +80,16 @@ K_solver = np.multiply(-d2u_dy2_solver[:].ravel(),kin_vis[:,0].ravel())
 
 
 # compute dyn_vis_spp with splinepy values
-k1=1786
-k2=0.0084
-#k2=0
-k3=0.73
-k3=1
+dyn_vis_spp = np.zeros(len(y[:, 0])) #dummy
+
+if visco_model[0] == 0:
+ dyn_vis_spp = mp[0] * np.ones(len(y[:, 0]))
+if visco_model[0] == 1:
+ dyn_vis_spp = mp[0] / np.power(1 + mp[1] * abs(du_dy[:, 0]), mp[2])
+
 print("dyn_vis_spp")
-for i in range(len(du_dy[:, 0])):
- print(np.multiply(k1,1/(1+k2*np.absolute(du_dy[i,0].ravel()))**k3))
-dyn_vis_spp = np.multiply(k1,1/(1+k2*np.absolute(du_dy[:,0].ravel()))**k3)
-dyn_vis_spp = k1 / np.power(1 + k2 * abs(du_dy[:, 0]), k3)
+for i in range(len(dyn_vis_spp)):
+ print(dyn_vis_spp[i])
 
 # compute K with splinepy values
 print("K_spp")
@@ -90,7 +97,9 @@ for i in range(len(d2u_dy2[:, 0])):
  print(np.multiply(-d2u_dy2[i].ravel(),dyn_vis_spp[i].ravel()))
 K_spp = np.multiply(-d2u_dy2[:,0].ravel(),dyn_vis_spp[:].ravel())
 
-K_spp = np.gradient(dyn_vis_spp * du_dy[:,0],y[:,0])
+#K_spp = np.gradient(dyn_vis_spp,y[:,0],edge_order=2)*du_dy[:,0] + dyn_vis_spp * d2u_dy2[:,0]
+K_spp = np.gradient(dyn_vis_spp*du_dy[:,0],y[:,0],edge_order=2)
+#K_spp = np.gradient(dyn_vis_spp,y[:,0],edge_order=2)*du_dy[:,0] + dyn_vis_spp * np.gradient(du_dy[:,0],y[:,0],edge_order=2)
 
 # compute error 
 error_u = np.multiply(uv[:, 0].ravel()-u_v[:, 0].ravel(),100/u_v[:, 0].ravel())
@@ -203,4 +212,4 @@ ax[4,2].set_xlabel("y-axis")
 plt.show()
 
 #print("0 0 0 0 0.125 0.125 0.25 0.25 0.375 0.375 0.5 0.5 0.625 0.625 0.75 0.75 0.875 0.875 1 1 1 1")
-print(knot_vector)
+#print(knot_vector)

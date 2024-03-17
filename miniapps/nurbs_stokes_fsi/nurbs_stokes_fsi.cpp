@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
    std::cout << "NURBS STOKES END\n";
 
    // POSTPROCESSING
-   int nop = 20 + 40; // number of points - 1
+   int nop = 20 + 300; // number of points - 1
    double x_coor = 0.5; // xcoord for extracting results
    double y_coor = 0.5; // ycoord for extracting results
    std::vector<std::vector<double>> post_vector; // vector results postprocessing 
@@ -966,7 +966,12 @@ int main(int argc, char *argv[])
    filename = "visco.res";
    //std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
-   output_file << "viscomodel " << vis_model << "\n";
+   output_file << "viscomodel \n" << vis_model << " ";
+   for (size_t i = 0; i < model_parameters.Size(); i++)
+   {
+      output_file << model_parameters[i] << " ";
+   }
+   output_file << "\n";
    output_file << "x y u v kin_vis gen_shearrate du/dx du/dy dv/dx dv/dy d2u/dy2\n";
    for (size_t i = 3*nop + 3; i < 4*nop + 4; i++)
    {
