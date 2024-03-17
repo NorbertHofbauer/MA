@@ -74,18 +74,23 @@ K_solver = np.multiply(-d2u_dy2_solver[:].ravel(),kin_vis[:,0].ravel())
 
 # compute dyn_vis_spp with splinepy values
 k1=1786
-k2=0.054
+k2=0.0084
+#k2=0
 k3=0.73
+k3=1
 print("dyn_vis_spp")
 for i in range(len(du_dy[:, 0])):
  print(np.multiply(k1,1/(1+k2*np.absolute(du_dy[i,0].ravel()))**k3))
 dyn_vis_spp = np.multiply(k1,1/(1+k2*np.absolute(du_dy[:,0].ravel()))**k3)
+dyn_vis_spp = k1 / np.power(1 + k2 * abs(du_dy[:, 0]), k3)
 
 # compute K with splinepy values
 print("K_spp")
 for i in range(len(d2u_dy2[:, 0])):
  print(np.multiply(-d2u_dy2[i].ravel(),dyn_vis_spp[i].ravel()))
 K_spp = np.multiply(-d2u_dy2[:,0].ravel(),dyn_vis_spp[:].ravel())
+
+K_spp = np.gradient(dyn_vis_spp * du_dy[:,0],y[:,0])
 
 # compute error 
 error_u = np.multiply(uv[:, 0].ravel()-u_v[:, 0].ravel(),100/u_v[:, 0].ravel())

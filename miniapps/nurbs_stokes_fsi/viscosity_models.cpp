@@ -11,14 +11,16 @@ double ShearRate::Calc(mfem::DenseMatrix &grad)
    double shearrate = 0;
    for (size_t n = 0; n < grad.Size(); n++)
    {
-      for (size_t m = 0; m < grad.Size(); m++)
+      //for (size_t m = 0; m < grad.Size(); m++)5
+      for (size_t m = n; m < grad.Size(); m++)
       {
          if (n==m)
          {
             shearrate += 2*grad(n,m)*grad(n,m);
          }else
          {
-            shearrate += 0.5*(grad(n,m)+grad(m,n))*(grad(n,m)+grad(m,n));
+            //shearrate += 0.5*(grad(n,m)+grad(m,n))*(grad(n,m)+grad(m,n));
+            shearrate += (grad(n,m)+grad(m,n))*(grad(n,m)+grad(m,n));
          }
          //std::cout << "shearrate " << shearrate << " n " << n << " m " << m << "\n";
       }
