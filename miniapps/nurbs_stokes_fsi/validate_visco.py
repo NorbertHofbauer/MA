@@ -75,7 +75,7 @@ ax[1,1].plot(y, kin_vis[:,0].ravel(), '-')
 ax[1,1].set_ylabel("eta")
 ax[1,1].set_xlabel("y-axis")
 # d(eta*d2u_dy2)/dy
-ax[2,1].plot(y, K_solver[:].ravel(), '-')
+ax[2,1].plot(y, K_solver[:].ravel(), '-x')
 ax[2,1].plot(y, np.ones(len(K_solver))*K_solver[:].mean(), '-')
 print('K mean value')
 print(K_solver[:].mean())

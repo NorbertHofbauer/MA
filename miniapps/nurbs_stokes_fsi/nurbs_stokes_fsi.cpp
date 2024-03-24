@@ -654,8 +654,11 @@ int main(int argc, char *argv[])
 
    // POSTPROCESSING
    int nop = 20 + 1000; // number of points - 1
+   //nop = 31;
    double x_coor = 0.5; // xcoord for extracting results
+   //x_coor = 0.508679;
    double y_coor = 0.5; // ycoord for extracting results
+   //std::vector<double> ips_y = {0.00867898,0.0412512,0.0837488,0.116321,0.133679,0.166251,0.208749,0.241321,0.258679,0.291251,0.333749,0.366321,0.383679,0.416251,0.458749,0.491321,0.508679,0.541251,0.583749,0.616321,0.633679,0.666251,0.708749,0.741321,0.758679,0.791251,0.833749,0.866321,0.883679,0.916251,0.958749,0.991321};
    std::vector<std::vector<double>> post_vector; // vector results postprocessing 
    // SCALARFIELD tf0
    mfem::GridFunction* gf_source = new mfem::GridFunction(tf0);
@@ -668,6 +671,7 @@ int main(int argc, char *argv[])
       mfem::Vector phys_point(sdim);
       phys_point[0] = x_coor;
       phys_point[1] = double(i)/double(nop);
+      //phys_point[1] = ips_y[i];
       phys_points.push_back(phys_point);
    }
    
@@ -819,6 +823,7 @@ int main(int argc, char *argv[])
       mfem::Vector phys_point(sdim);
       phys_point[0] = x_coor;
       phys_point[1] = double(i)/double(nop);
+      //phys_point[1] = ips_y[i];
       phys_points.push_back(phys_point);
    }
 

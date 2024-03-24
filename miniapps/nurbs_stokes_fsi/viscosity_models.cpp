@@ -55,7 +55,8 @@ double ShearRateCoefficient::Eval(mfem::ElementTransformation &T,
       }
    }
    shearrate = std::sqrt(shearrate);
-   */
+   */   
+
    return shearrate.Calc(grad);
 }
 
@@ -104,6 +105,14 @@ double CarreauWLFModelCoefficient::Eval(mfem::ElementTransformation &T,
    kinematic_viscosity = dynamic_viscosity/density;
    //std::cout << "logat " << logat << " at " << at << " temp " << temp << "\n";
    //std::cout << "kinematic_viscosity " << kinematic_viscosity << "\n";
+   
+   /*
+   mfem::IntegrationPoint ip_source;  
+   ip_source = ip;
+   mfem::Vector phys_point(2);
+   T.Transform(ip_source,phys_point);
+   std::cout <<  phys_point[0] << " " << phys_point[1] << " " << ip_source.x << " " << ip_source.y << "\n";
+   */
 
    return kinematic_viscosity;
 }
