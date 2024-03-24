@@ -917,7 +917,7 @@ bool NurbsStokesSolver::calc_dirichletbc_solid(mfem::GridFunction &ts0)
 bool NurbsStokesSolver::calc_flowsystem_strongbc(mfem::GridFunction &v0,mfem::GridFunction &p0, mfem::GridFunction &tf0, mfem::GridFunction &v, mfem::GridFunction &p, mfem::GridFunction &tf, mfem::Coefficient &kin_vis)
 {  
    //VALIDATION COUETTE FLOW
-   //p0 = 100;
+   //p0 = 0;
    //pres_ess_tdof_list = 1;
 
    // to set our boundary conditions we first ned to define our grid functions, so that we have something to project onto
