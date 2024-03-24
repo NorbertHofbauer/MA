@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set Degree
-degree = 4
+degree = 3
 #set refinement
-ref = 4
+ref = 3
 
 # Recreate the geometry from file (as far as I understand)
 geometry = spp.helpme.create.box(1, 1).bspline
