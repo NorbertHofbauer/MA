@@ -75,7 +75,7 @@ ax[1,1].plot(y, kin_vis[:,0].ravel(), '-')
 ax[1,1].set_ylabel("eta")
 ax[1,1].set_xlabel("y-axis")
 # d(eta*d2u_dy2)/dy
-ax[2,1].plot(y, K_solver[:].ravel(), '-x')
+ax[2,1].plot(y, K_solver[:].ravel(), '-')
 ax[2,1].plot(y, np.ones(len(K_solver))*K_solver[:].mean(), '-')
 print('K mean value')
 print(K_solver[:].mean())
@@ -85,6 +85,18 @@ ax[2,1].set_ylabel("-K")
 ax[2,1].set_title("mean: " + str(K_solver[:].mean()))
 ax[2,1].set_xlabel("y-axis")
 
+visco_data = np.zeros((len(y),9))
+for i in range(len(y)):
+ visco_data[i,0]=x[i] #x coord
+ visco_data[i,1]=y[i] #y coord
+ visco_data[i,2]=uv[i, 0].ravel() #u
+ visco_data[i,3]=deriv[i, 1].ravel() #du/dy
+ visco_data[i,4]=d2u_dy2_solver[i].ravel() #d2u/dy2
+ visco_data[i,5]=temp[i,0].ravel() #temperature
+ visco_data[i,6]=kin_vis[i,0].ravel() #eta
+ visco_data[i,7]=K_solver[i].ravel() #-K
+ visco_data[i,8]=K_solver[:].mean() #-K mean
+
+np.savetxt("visco.csv", visco_data, delimiter=",")
 
 plt.show()
-

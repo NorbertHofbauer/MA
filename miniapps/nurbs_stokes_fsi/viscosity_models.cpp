@@ -136,7 +136,7 @@ double PowerLawModelCoefficient::Eval(mfem::ElementTransformation &T,
    u->GetVectorGradient(T, grad);
    sr = shearrate.Calc(grad);
 
-   m = m0 * std::exp(-a * (temp-T0));
+   m = m0 * std::exp((-a) * (temp-T0));
    if (sr>shearrate0)
    {
       dynamic_viscosity = m * std::pow(sr,n-1);
