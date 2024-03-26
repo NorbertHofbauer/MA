@@ -1216,7 +1216,7 @@ bool NurbsStokesSolver::calc_temperaturesystem_strongbc_fluid(mfem::GridFunction
 
    std::cout << "SOLVE TEMPERATUREFIELD FLUID \n";   
    // solve the system
-   // initial guess
+   // initial guess      
    T = tf0;
    //solver.Mult(H, tf);
    solver.Mult(H, T);
@@ -1452,22 +1452,7 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
    {  
       calc_dirichletbc_fluid_cht(tf0,ts0);
       //std::cout << "\n\n ## dirichlet geht \n\n";
-      for (size_t i = 0; i < tf0.Size(); i++)
-      {
-         //std::cout << i << " " << tf0[i] <<"\n";
-      }
-      std::vector<double> check(tf.Size());
-      for (size_t i = 0; i < tf0.Size(); i++)
-      {
-         check[i] = tf0[i];
-      }
-
       calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
-      for (size_t i = 0; i < tf.Size(); i++)
-      {
-         std::cout << i << " " << check[i] << " " << tf[i] << " " << check[i] - tf[i] <<"\n";
-      }
-      
       //std::cout << "\n\n ##  temp f geht \n\n";
       calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf, flux);
       //std::cout << "\n\n ##  temp s geht \n\n";

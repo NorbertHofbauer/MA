@@ -452,7 +452,6 @@ int main(int argc, char *argv[])
          }
          */
          
-
          cht_tf0_last = cht_tf0;
          cht_ts0_last = cht_ts0; 
          cht_tf0_current = tf;
@@ -462,6 +461,11 @@ int main(int argc, char *argv[])
          cht_ts0 = ts;
          tf_current = tf;
          ts_current = ts;
+
+         //for (size_t i = 0; i < cht_tf0.Size(); i++)
+         //{
+         //   std::cout <<  i << " " << cht_tf0_last[i] << " " << cht_tf0_current[i] << " " << cht_tf0_last[i]-cht_tf0_current[i] << " \n";
+         //}
 
          cht_tf_error_norm_abs = nssolver.error_norm_abs(cht_tf0_last,cht_tf0_current);
          cht_ts_error_norm_abs = nssolver.error_norm_abs(cht_ts0_last,cht_ts0_current);
