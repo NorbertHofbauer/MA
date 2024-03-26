@@ -714,9 +714,9 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
+   //tf_bc = 0;
 
    // create vectors for coefficients and boundary markers
-
    std::vector<mfem::Array<int>> tfdbc_bdr_marker;
    std::vector<mfem::ConstantCoefficient> tfdbc_bdr_coefficient;
 
@@ -728,7 +728,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
 
       mfem::ConstantCoefficient cc(user_tfdbc_bdr_values[i]);
       tfdbc_bdr_coefficient.push_back(cc);
-      //std::cout << user_tdbc_bdr_values[i] << " temperature values \n";
+      //std::cout << user_tfdbc_bdr_values[i] << " temperature values \n";
    }
 
    InterfaceDirichletCoefficient ifacecoef(beta_t);
@@ -756,7 +756,29 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    
    d_bc.SetDiagonalPolicy(mfem::Matrix::DiagonalPolicy::DIAG_ZERO); // important, otherwise a different policy will be used, which results in false building of our matrix
    d_bc.FormLinearSystem(tempf_ess_tdof_list_dummy, tf_bc, *h_bc, D_BC, T_BC, H_BC); // form D_BC
-   
+
+
+   // map the boundary conditions from last step as initial guess
+   mfem::Array<int> tempf_dbc_ess_tdof_list;
+   for (size_t i = 0; i < tfdbc_bdr_marker.size(); i++)
+   {
+      //std::cout << "user " <<  i << "\n";
+      tffes->GetEssentialTrueDofs(tfdbc_bdr_marker[i], tempf_dbc_ess_tdof_list);
+      for (size_t ii = 0; ii < tempf_dbc_ess_tdof_list.Size(); ii++)
+      {
+         //std::cout << "dof " <<  tempf_dbc_ess_tdof_list[ii] << "\n";
+         //std::cout <<  tf_bc[tempf_dbc_ess_tdof_list[ii]] << " --- " << tf0[tempf_dbc_ess_tdof_list[ii]] << "<--- override \n";
+         tf_bc[tempf_dbc_ess_tdof_list[ii]] = tf0[tempf_dbc_ess_tdof_list[ii]];
+         //std::cout <<  tf_bc[tempf_dbc_ess_tdof_list[ii]] << " --- " << user_tfdbc_bdr_values[i] << "<--- override \n";
+         //tf_bc[tempf_dbc_ess_tdof_list[ii]] = user_tfdbc_bdr_values[i];
+      }
+   }
+   tffes->GetEssentialTrueDofs(tfiface_bdr, tempf_dbc_ess_tdof_list);
+   for (size_t i = 0; i < tempf_dbc_ess_tdof_list.Size(); i++)
+   {
+         tf_bc[tempf_dbc_ess_tdof_list[i]] = tf0[tempf_dbc_ess_tdof_list[i]];
+   }
+   //mapping end
 
    mfem::GMRESSolver bc_solver;
    
@@ -805,6 +827,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
       sol_sock << "solution\n" << *mesh_fluid << tf_bc << std::flush;
    }
 
+   // map the computed boundary conditions back to tf0, so that the initial guess at the next step starts not from scratch
    for (size_t i = 0; i < tf0.Size(); i++)
    {
       //std::cout <<  tf0[i] << " --- " << tf_bc[i] << " \n";
@@ -1429,7 +1452,22 @@ bool NurbsStokesSolver::solve_temperature(mfem::GridFunction &v0, mfem::GridFunc
    {  
       calc_dirichletbc_fluid_cht(tf0,ts0);
       //std::cout << "\n\n ## dirichlet geht \n\n";
+      for (size_t i = 0; i < tf0.Size(); i++)
+      {
+         //std::cout << i << " " << tf0[i] <<"\n";
+      }
+      std::vector<double> check(tf.Size());
+      for (size_t i = 0; i < tf0.Size(); i++)
+      {
+         check[i] = tf0[i];
+      }
+
       calc_temperaturesystem_strongbc_fluid(v0, tf0, ts0, v, tf,ts);
+      for (size_t i = 0; i < tf.Size(); i++)
+      {
+         std::cout << i << " " << check[i] << " " << tf[i] << " " << check[i] - tf[i] <<"\n";
+      }
+      
       //std::cout << "\n\n ##  temp f geht \n\n";
       calc_temperaturesystem_strongbc_solid(ts0, tf0, ts, tf, flux);
       //std::cout << "\n\n ##  temp s geht \n\n";
