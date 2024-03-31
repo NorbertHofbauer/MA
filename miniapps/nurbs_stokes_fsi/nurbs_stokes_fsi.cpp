@@ -130,8 +130,12 @@ int main(int argc, char *argv[])
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 3 -mp '30 0.25 0.025 100 1' -vnos '1 3' -vdbc '' -vdbc_values '' -pdbc '4 2' -pdbc_values '300 0' -tfdbc '1 3' -tfdbc_values '100 125' -tsdbc '1' -tsdbc_values '250' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 100 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
 
    // temperature field and coupling
-
-   //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '' -tfdbc_values '' -tsdbc '4 6' -tsdbc_values '200 220' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 4' -tsiface '2 8' -mi 1000 -mi2 10 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
+   // temp diffusion
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 0 -mp '1' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '100 200' -tsdbc '1 3' -tsdbc_values '100 200' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   // temp advection -> temp function hardcoded
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 0 -mp '1' -vnos '' -vdbc '4 1' -vdbc_values '1 1 1 1' -pdbc '' -pdbc_values '' -tfdbc '1 4' -tfdbc_values '100 200' -tsdbc '1 3' -tsdbc_values '100 200' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   // temp coupling
+   //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '' -tfdbc_values '' -tsdbc '4 6' -tsdbc_values '200 220' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 4' -tsiface '2 8' -mi 1000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
 
    // Parse command-line options.
    // input options for our executable

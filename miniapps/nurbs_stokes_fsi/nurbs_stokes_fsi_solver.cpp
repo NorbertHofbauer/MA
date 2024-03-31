@@ -445,7 +445,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
    // VELOCITY
    // define rhs with the desired boundary condition values
-   mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet); // function for our desired boundary condition
+   //mfem::VectorFunctionCoefficient vfc_inlet(sdim, lambda_inlet); // function for our desired boundary condition
    //mfem::FunctionCoefficient vfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *f_bc(new mfem::LinearForm(vfes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
@@ -482,6 +482,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    // define rhs with the desired boundary condition values
    //mfem::ConstantCoefficient tfc_inlet(temp_1); // function for our desired boundary condition
    //mfem::ConstantCoefficient tfc_walls(temp_2); // function for our desired boundary condition
+   //mfem::FunctionCoefficient tfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
@@ -490,6 +491,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    for (size_t i = 0; i < tfdbc_bdr_marker.size(); i++)
    {
       h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfdbc_bdr_coefficient[i]),tfdbc_bdr_marker[i]); // define integrator on desired boundary
+      //h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_inlet),tfdbc_bdr_marker[i]); // define integrator on desired boundary
       d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    h_bc->Assemble(); // assemble the linear form (vector)   
