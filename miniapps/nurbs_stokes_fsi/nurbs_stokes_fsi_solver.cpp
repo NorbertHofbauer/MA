@@ -374,6 +374,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
       return;
    };
 
+   //auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition, double &VelocityValue) -> void
    auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition, double &VelocityValue) -> void
    {
       double h=1;
@@ -482,7 +483,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    // define rhs with the desired boundary condition values
    //mfem::ConstantCoefficient tfc_inlet(temp_1); // function for our desired boundary condition
    //mfem::ConstantCoefficient tfc_walls(temp_2); // function for our desired boundary condition
-   //mfem::FunctionCoefficient tfc_inlet(lambda_inlet2); // function for our desired boundary condition
+   mfem::FunctionCoefficient tfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
