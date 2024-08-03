@@ -374,19 +374,18 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
       return;
    };
 
-   //auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition, double &VelocityValue) -> void
-   auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition, double &VelocityValue) -> void
+/*
+   //auto lambda_inlet2 = [](const mfem::Vector &x) { return std::sin(M_PI*x[0])*std::sin(2.*M_PI*x[1]); };
+   auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition)
    {
       double h=1;
-      VelocityValue = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
-      //VelocityValue[0] = v_max;
-      //VelocityValue[1] = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*v_max;
-      //VelocityValue[1] = 0;
-      //std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
-      //std::cout << " v(0) = " << VelocityValue(0) << " v(1) = " << VelocityValue(1) << std::endl;      
-      return;
+      double TemperatureValue;
+      TemperatureValue = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*100;
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " TemperatureValue = " << TemperatureValue << std::endl;      
+      return TemperatureValue;
    };
-
+*/
    mfem::GridFunction v_bc(vfes),p_bc(pfes), tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
 
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
@@ -483,7 +482,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
    // define rhs with the desired boundary condition values
    //mfem::ConstantCoefficient tfc_inlet(temp_1); // function for our desired boundary condition
    //mfem::ConstantCoefficient tfc_walls(temp_2); // function for our desired boundary condition
-   mfem::FunctionCoefficient tfc_inlet(lambda_inlet2); // function for our desired boundary condition
+   //mfem::FunctionCoefficient tfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
@@ -714,6 +713,17 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid(mfem::GridFunction &v0, mfem::Gri
 
 bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem::GridFunction &ts0)
 {
+   /*
+   auto lambda_inlet2 = [this](const mfem::Vector &QuadraturPointPosition)
+   {
+      double h=1;
+      double TemperatureValue;
+      TemperatureValue = 4*(h-QuadraturPointPosition(1))*QuadraturPointPosition(1)/(h*h)*100;
+      std::cout << " qp(0) = " << QuadraturPointPosition(0) << " qp(1) = " << QuadraturPointPosition(1) << std::endl;
+      std::cout << " TemperatureValue = " << TemperatureValue << std::endl;      
+      return TemperatureValue;
+   };
+   */
    mfem::GridFunction tf_bc(tffes); // to calculate our gridfunction on the dirichlet boundary
    // we need grid functions to first compute the controlpoint values on the boundary, so we can project them on to our system
    // means we will build a system that needed to be solved for the desired boundary values
@@ -741,6 +751,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    // TEMPERATURE
    // define rhs with the desired boundary condition values
    mfem::ConstantCoefficient One_bc(1); // coefficient for the kinematic viscosity
+   //mfem::FunctionCoefficient tfc_inlet(lambda_inlet2); // function for our desired boundary condition
    mfem::LinearForm *h_bc(new mfem::LinearForm(tffes)); // define linear form for rhs
    // define bilinear form add the boundary, means the nurbs add the boundary
    mfem::BilinearForm d_bc(tffes); // define the bilinear form results in n x n matrix, we use the velocity finite element space
@@ -749,6 +760,7 @@ bool NurbsStokesSolver::calc_dirichletbc_fluid_cht(mfem::GridFunction &tf0,mfem:
    for (size_t i = 0; i < tfdbc_bdr_marker.size(); i++)
    {
       h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfdbc_bdr_coefficient[i]),tfdbc_bdr_marker[i]); // define integrator on desired boundary
+      //h_bc->AddBoundaryIntegrator(new mfem::BoundaryLFIntegrator(tfc_inlet),tfdbc_bdr_marker[i]); // define integrator on desired boundary
       d_bc.AddBoundaryIntegrator(new mfem::MassIntegrator(One_bc),tfdbc_bdr_marker[i]); // bilinear form (lambda*u_vector),(v_vector))
    }
    h_bc->Assemble(); // assemble the linear form (vector)   

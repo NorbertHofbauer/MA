@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
    // temp diffusion
    //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 0 -mp '1' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '1 3' -tfdbc_values '100 200' -tsdbc '1 3' -tsdbc_values '100 200' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
    // temp advection -> temp function hardcoded
-   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 0 -mp '1' -vnos '' -vdbc '4 1' -vdbc_values '1 1 1 1' -pdbc '' -pdbc_values '' -tfdbc '1 4' -tfdbc_values '100 200' -tsdbc '1 3' -tsdbc_values '100 200' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
+   //./nurbs_stokes_fsi -mf ../../../MA/data/quad_nurbs.mesh -ms ../../../MA/data/quad_nurbs.mesh -r 3 -vm 0 -mp '1' -vnos '' -vdbc '4' -vdbc_values '1 0' -pdbc '' -pdbc_values '' -tfdbc '4' -tfdbc_values '100' -tsdbc '' -tsdbc_values '' -d 1 -tfdc 0 -tsdc 0.5 -tfiface '' -tsiface '' -mi 10000 -mi2 2 -oev 1 -oep 0 -oetf 0 -oets 0 -rel 1 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-12 -rt 1e-12  -job test
    // temp coupling
    //./nurbs_stokes_fsi -mf ../../../MA/data/validate_2_fluid.mesh -ms ../../../MA/data/validate_2_solid.mesh -r 3 -vm 0 -mp '200' -vnos '' -vdbc '' -vdbc_values '' -pdbc '' -pdbc_values '' -tfdbc '' -tfdbc_values '' -tsdbc '4 6' -tsdbc_values '200 220' -d 1 -tfdc 0.1 -tsdc 0.5 -tfiface '2 4' -tsiface '2 8' -mi 1000 -mi2 2 -oev 2 -oep 1 -oetf 0 -oets 0 -rel 0.5 -betaq 0.3 -betat 0.3 -me 1e-8 -at 1e-7 -rt 1e-8  -job test
 
@@ -999,11 +999,13 @@ int main(int argc, char *argv[])
 
    // FSI TEST
    // POSTPROCESSING
-   nop = 20; // number of points - 1
+   nop = 99; // number of points - 1
    y_coor = 0.5; // ycoord for extracting results
-   
-   // SCALARFIELD ts0 part1
-   gf_source = new mfem::GridFunction(ts0);
+   post_vector.clear(); // clear results from before
+
+   // SCALARFIELD ts part1
+   //gf_source = new mfem::GridFunction(ts0);
+   gf_source = new mfem::GridFunction(ts);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -1046,8 +1048,9 @@ int main(int argc, char *argv[])
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
-   // SCALARFIELD tf0
-   gf_source = new mfem::GridFunction(tf0);
+   // SCALARFIELD tf
+   //gf_source = new mfem::GridFunction(tf0);
+   gf_source = new mfem::GridFunction(tf);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -1090,8 +1093,9 @@ int main(int argc, char *argv[])
       post_vector.push_back({phys_points[i][0],phys_points[i][1],source});
    }
 
-   // SCALARFIELD ts0 part2
-   gf_source = new mfem::GridFunction(ts0);
+   // SCALARFIELD ts part2
+   //gf_source = new mfem::GridFunction(ts0);
+   gf_source = new mfem::GridFunction(ts);
    gfc_source = mfem::GridFunctionCoefficient(gf_source); 
    sdim = gf_source->FESpace()->GetMesh()->SpaceDimension();
 
@@ -1138,7 +1142,7 @@ int main(int argc, char *argv[])
    //std::ofstream output_file;
    output_file.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
    output_file << "fsi temperature\n";
-   for (size_t i = ic + 1; i < post_vector.size(); i++)
+   for (size_t i = 0; i < post_vector.size(); i++)
    {
       for (size_t ii = 0; ii < post_vector[i].size(); ii++)
       {
