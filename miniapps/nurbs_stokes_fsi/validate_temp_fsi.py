@@ -45,7 +45,7 @@ ax[0].set_xlabel("x-axis")
 #ax[1].set_ylabel("absolute Error")
 #ax[1].set_xlabel("y-axis")
 
-temp_data = np.zeros((len(y),6))
+temp_data = np.zeros((nov,6))
 for i in range(nov):
  temp_data[i,0]=x1[i] #x1 coord
  temp_data[i,1]=temp1[i] #temp1
